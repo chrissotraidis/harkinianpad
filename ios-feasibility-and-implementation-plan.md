@@ -1,0 +1,187 @@
+# Ship of Harkinian on iOS/iPadOS — Feasibility Investigation and Implementation Plan
+
+Investigation date: 2026-07-24/25. All claims about the codebase were verified against fresh clones at these revisions:
+
+| Tree | Repo | Revision | Notes |
+|---|---|---|---|
+| `soh` | HarbourMasters/Shipwright | `da4e6dc` (main, 2026-07-23) | the game/app layer |
+| `lus-pinned` | Kenix3/libultraship | `2bfbde3` (`port-maintenance`, 2026-07-21) | **the exact commit SoH pins as its `libultraship` submodule** (`soh/.gitmodules` + `git ls-tree`) — primary reference tree |
+| `lus` | Kenix3/libultraship | `a3f1e10` (main, 2026-06-12) | compared for drift |
+| `lus-wiiu` | HarbourMasters/libultraship-wiiu | `0622ac4` (2025-01-02) | platform-fork precedent |
+| `zapdtr` | HarbourMasters/ZAPDTR | `be1c68a` (2026-07-20) | asset extractor (SoH submodule) |
+| `otrexporter` | HarbourMasters/OTRExporter | `c5465ba` (2026-05-30) | archive exporter (SoH submodule) |
+
+Citations are written `tree:path:lines`. Unless noted, libultraship citations refer to `lus-pinned`, since that is what SoH actually builds. Detailed raw research notes with additional citations are in [`findings/`](findings/) in this repository.
+
+---
+
+## A. Verdict
+
+**Feasible, with named caveats. Confidence: high** for feasibility itself (the load-bearing facts below were each verified directly in source, not inferred); **medium** for the effort estimates, which are estimates based on the enumerated gap list, not on a build attempt.
+
+No hard blocker was found. The three findings that drive the verdict:
+
+1. **libultraship already contains a real, CI-exercised iOS build path.** This is not a port to a new platform; it is the completion of one that upstream started in April 2024. The pinned LUS tree has: an `__IOS__` compile definition gated on `CMAKE_SYSTEM_NAME STREQUAL "iOS"` (`lus-pinned:src/CMakeLists.txt:176-213`); a dedicated iOS dependency file fetching SDL2 `release-2.32.10`, metal-cpp (`macOS13_iOS16` tag), spdlog, libzip, tinyxml2, nlohmann-json and wiring ImGui's Metal backend (`lus-pinned:cmake/dependencies/ios.cmake`); an automatic Xcode toolchain (`lus-pinned:cmake/ios-toolchain-populate.cmake`, fetching `leetal/ios-cmake`, `PLATFORM=OS64COMBINED`); Xcode signing/bundle-ID options (`lus-pinned:CMakeLists.txt:14-18`); a CI job that configures LUS with `-GXcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0` (`lus-pinned:.github/workflows/build-validation.yml:54`); iOS-correct sandbox paths in `Context.cpp` (`lus-pinned:src/ship/Context.cpp:468-471,531-534`); and `__IOS__` branches in the Metal backend and window layer (§B). The Metal renderer uses **zero** macOS-only storage modes (`MTLResourceStorageModeManaged` does not occur anywhere in `gfx_metal.cpp`) and acquires its `CAMetalLayer` through SDL (`lus-pinned:src/fast/backends/gfx_metal.cpp:79`), not through AppKit. Upstream's own porting guide lists iOS as a supported platform (`lus-pinned:docs/PORTING.md`, platform table).
+
+2. **There is no runtime CPU code generation anywhere in the shipped binary — the one hard iOS blocker class is absent.** Exhaustive searches of `soh` and `lus-pinned` for `PROT_EXEC`, `MAP_JIT`, `mprotect`, `VirtualProtect`/`VirtualAlloc`, asmjit/xbyak/dynarec patterns returned zero hits. Game logic is AOT-compiled decompilation C, statically linked; `Overlay_Load` — the one place original N64 code dynamically loaded executable overlays — is a hard `return 0;` stub with the original implementation dead-coded under `#if 0` (`soh:soh/src/code/code_800FC620.c:23-97`). `.otr`/`.o2r` archives carry only eight data resource types (DisplayList, Texture, Vertex, Matrix, Light, Blob, JSON, shader *source text*; `lus-pinned:include/ship/resource/ResourceType.h:15-21`, `lus-pinned:include/fast/resource/ResourceType.h:5-13`), interpreted by fixed native code. Metal shaders are generated as MSL source at runtime and compiled with `MTLDevice::newLibrary` (`lus-pinned:src/fast/backends/gfx_metal.cpp:229-230`) — that is GPU-shader compilation, which is permitted on iOS, not CPU code generation. One caveat: LUS contains an opt-in TinyCC-based mod compiler that writes and `dlopen`s native dylibs (`lus-pinned:src/ship/scripting/ScriptLoader.cpp:141-237`, `LibraryLoader.cpp:158`); it is gated behind `ENABLE_SCRIPTING`, default `OFF` (`lus-pinned:CMakeLists.txt:12`), and SoH never enables it (zero references in `soh` CMake). It must stay off — ideally hard-disabled — for iOS (§E, risk T6).
+
+3. **The remaining work is concentrated in the SoH app layer, which has zero iOS awareness today, plus a short list of concrete LUS bugs.** `soh/CMakeLists.txt` and `soh/soh/CMakeLists.txt` contain no `iOS` branch of any kind; an iOS configure falls into the generic desktop `else()` arm, which does `find_package(Ogg/Vorbis/Opus/OpusFile REQUIRED)` with no fallback (`soh:soh/CMakeLists.txt:695-716`) and fails. Two verified link-breaking bugs exist in LUS itself: `Audio.cpp` instantiates `CoreAudioAudioPlayer` whenever `__APPLE__` is defined (`lus-pinned:src/ship/audio/Audio.cpp:24-27`) but the implementation file is only compiled for `Darwin` (`lus-pinned:src/ship/CMakeLists.txt:16-18`) — undefined symbol at iOS link time; and `gfx_sdl2.cpp` calls `toggleNativeMacOSFullscreen`/`isNativeMacOSFullscreenActive` under bare `__APPLE__` (`lus-pinned:src/fast/backends/gfx_sdl2.cpp:238-243,677-685`) while the implementing `macUtils.mm` is Darwin-only (`lus-pinned:src/ship/CMakeLists.txt:66-68`). Both are small, mechanical fixes; both prove the iOS path is scaffolded and configure-tested but has never linked a full app.
+
+Context that shapes (but does not change) the verdict: **no iOS port of SoH exists** (no repo, ipa, or store/sideload listing found), so this work is not redundant. The closest prior art — a now-inaccessible iOS build of SpaghettiKart (Mario Kart 64 on the same LUS stack, `Sunset-Dawn/SpaghettiKart` release `1.0.0-E`, repo now 404) — reportedly achieved on-device extraction, Files-app import, and an async setup UI, and its LUS-side prerequisites were being upstreamed (`Kenix3/libultraship` PRs #1056, closed when the author deleted their fork, and #1083, an open draft by coco875 as of April 2026). Upstream iOS support has broken and been re-fixed at least twice (PRs #491 → #728 → #922 CI-disable → #966 CI-re-enable), which is the main schedule risk (§E, risk T1).
+
+---
+
+## B. Architecture map
+
+### The stack as it exists
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ soh (Shipwright)                                                 │
+│  soh/src/**          decomp game C (actors, scenes, code/) — AOT │
+│  soh/soh/**          port layer: OTRGlobals, SaveManager,        │
+│                      Enhancements, SohGui (ImGui menus),         │
+│                      Extractor (ZAPD driver UI)                  │
+│  soh/src/libultra/os cooperative-fiber "N64 threads"             │
+│  ZAPDTR + OTRExporter  statically linked, in-process extraction  │
+├──────────────────────────────────────────────────────────────────┤
+│ libultraship (submodule, port-maintenance @ 2bfbde3)             │
+│  src/ship/**   Context (paths/config/logging), ResourceManager   │
+│                + ArchiveManager (.o2r via libzip, .otr via       │
+│                StormLib), Audio (WASAPI/CoreAudio/SDL/Null),     │
+│                controller stack (pure SDL_GameController),       │
+│                Gui (ImGui), port/mobile (soft-keyboard shim)     │
+│  src/fast/**   Fast3D: Interpreter + GfxRenderingAPI backends    │
+│                (DX11 / OpenGL / Metal) + GfxWindowBackendSDL2    │
+├──────────────────────────────────────────────────────────────────┤
+│ SDL2 2.32.10 (FetchContent on iOS)  │  metal-cpp │ ImGui (Metal) │
+│  UIKit window, events, GameController fw, AVAudioSession audio   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Control flow at runtime: `main()` (`soh:soh/src/code/main.c:59`) → `InitOTR` → `OTRGlobals` ctor (creates LUS `Context`, loads `soh.o2r`) → `RunExtract` (first-run extraction UI) → `Initialize` (loads `oot.o2r`) → the game loop `while (WindowIsRunning()) RunFrame();` (`soh:soh/src/code/graph.c:519-523`). The "N64 threads" (graph/pad/sched/irq) are cooperative fibers multiplexed on the one real thread that called `main()` (`soh:soh/src/libultra/os/createthread.c`, `startthread.c`; `main.c:137-141` starts the graph "thread" synchronously on the same stack). Window creation, the SDL event pump (`lus-pinned:src/fast/backends/gfx_sdl2.cpp:666-674`, pumped from `soh:soh/soh/OTRGlobals.cpp:1784`), and every frame's Metal work therefore all run on the process main thread — which is exactly what UIKit requires. Real OS threads exist only for audio production (`soh:soh/soh/OTRGlobals.cpp:1126`), resource loading (`lus-pinned:src/ship/resource/ResourceManager.cpp:61`), save I/O (`soh:soh/soh/SaveManager.cpp:129`), the extraction worker (`OTRGlobals.cpp:454`), and optional network features.
+
+On iOS, only the Metal rendering backend is compiled — OpenGL is excluded at the CMake level (`lus-pinned:src/CMakeLists.txt:176-213` never defines `ENABLE_OPENGL` for iOS), and no GLES path exists for iOS by design (GLES3 is wired only for Android; `lus-pinned:src/CMakeLists.txt:123-126`). The Android forks' GLES route is therefore **not** a fallback option on iOS in this codebase; Metal is the only path, and the backend is already clean for it (§A.1).
+
+### Where new code goes
+
+**Into libultraship (upstreamable to `port-maintenance`):**
+- the two link fixes (CoreAudio gating, macOS-fullscreen carve-out),
+- an iOS audio decision (exclude CoreAudio on iOS → fall through to `SDLAudioPlayer`, or add a RemoteIO variant),
+- `SDL_APP_*` lifecycle event handling in `gfx_sdl2.cpp` plus a callable "flush now" API on `Context`,
+- ImGui HiDPI scaling for iOS (currently Android-only: `lus-pinned:src/ship/window/gui/Gui.cpp:73-77`),
+- optionally safe-area handling in the mobile shim (`lus-pinned:src/ship/port/mobile/MobileImpl.cpp`).
+
+**Into the SoH app layer (a fork or branch of Shipwright, following the pattern of every existing mobile port):**
+- an `elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")` arm in both SoH CMake files (dependency acquisition, source exclusions, bundle target properties),
+- iOS `Info.plist.in`, app icon/launch screen assets, signing wiring (`SIGN_LIBRARY`/`BUNDLE_ID`/`DEVELOPMENT_TEAM` passthrough to LUS's existing options),
+- replacement of the extractor's native ROM chooser (`portable-file-dialogs`) with `UIDocumentPickerViewController`, and the extractor-assets path fix,
+- per-file `__IOS__` decisions mirroring the existing `__SWITCH__`/`__WIIU__` branches (§C, item 10).
+
+**Not touched at all:** decomp game code (`soh/src`), the Fast3D rendering interface and Metal backend logic, the resource/archive system, the controller stack, the threading/fiber model, ZAPDTR/OTRExporter internals.
+
+### Why the filesystem story is already solved
+
+All path resolution flows through four static helpers in `Ship::Context` (`lus-pinned:src/ship/Context.cpp:460-594`), and the `__IOS__` branches already return the sandbox-legal app-container `Documents/` directory for both the "bundle" and "app data" roots (`:468-471`, `:531-534`). Config, saves, logs, mods, and archives all route through this seam (full table with citations in `findings/04-filesystem-extraction.md`). Archive discovery scans `GetAppDirectoryPath()` for `.o2r/.otr` files (`lus-pinned:src/ship/resource/archive/ArchiveManager.cpp:205-236`; `soh:soh/soh/OTRGlobals.cpp:790-797`), so a Files-app import into `Documents/` (with `UIFileSharingEnabled`) satisfies discovery **with no code change** — only first-run UX work. The known deviations (cwd-relative fallbacks and the extractor-assets location) are enumerated in work item 6.
+
+---
+
+## C. Work breakdown
+
+Ordered. Sizes are **estimates** based on the enumerated gap surface (file counts and precedent from the Switch/Wii U branches), not on a build attempt; calibrate after milestone 1. "S" ≈ hours-to-a-day, "M" ≈ days, "L" ≈ one-to-few weeks for one engineer familiar with CMake/iOS.
+
+**1. LUS: fix the CoreAudio iOS link error and pick the iOS audio backend.** — Size: S (exclusion route) / M (RemoteIO route). Depends on: nothing.
+Today `Audio.cpp` offers and defaults to `COREAUDIO` for all `__APPLE__` (`lus-pinned:src/ship/audio/Audio.cpp:24-27,51-53,100-102`) while `CoreAudioAudioPlayer.cpp` is compiled only for Darwin (`lus-pinned:src/ship/CMakeLists.txt:16-18`) and its implementation uses macOS-only `kAudioUnitSubType_HALOutput` (`lus-pinned:src/ship/audio/CoreAudioAudioPlayer.cpp:47`). Recommended first step: gate the `COREAUDIO` case and availability-list entry with `#if defined(__APPLE__) && !defined(__IOS__)` so iOS falls through to `SDLAudioPlayer` (queue-based `SDL_QueueAudio`, 44100 Hz/1024-sample defaults, `lus-pinned:src/ship/audio/SDLAudioPlayer.cpp:34-40`; SDL2's iOS audio sits on AVAudioSession). A native RemoteIO variant is a later optimization; upstream draft PR #1083 states it is working on exactly this area — coordinate before writing it (§F, Q3). Done when: an iOS link succeeds and audible audio plays via `SDLAudioPlayer` on device.
+
+**2. LUS: carve iOS out of the native-macOS-fullscreen path.** — Size: S. Depends on: nothing.
+Change the two `#if defined(__APPLE__)` call sites to `#if defined(__APPLE__) && !defined(__IOS__)` (`lus-pinned:src/fast/backends/gfx_sdl2.cpp:238-243,677-685`), or make `macUtils.mm` compile as a no-op for `TARGET_OS_IPHONE` and add it to the iOS source list. iOS has no fullscreen toggle concept; `Fast3dWindow` already forces `gameMode`/fullscreen for mobile (`lus-pinned:src/fast/Fast3dWindow.cpp:77-78,91-93`). Done when: iOS target links with no undefined `toggleNativeMacOSFullscreen` symbols.
+
+**3. SoH: add the iOS CMake arm (dependency + source wiring).** — Size: M–L. Depends on: 1, 2 (to get a linking product).
+Add `elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")` arms to the 4-way platform switches in `soh:soh/CMakeLists.txt` (compile definitions `:333-408`, options `:484-593`, link deps `:673-716`) modeled on the `NintendoSwitch` arm (`:684-693`: libultraship + SDL2 + Threads only — consoles already build without Ogg/Vorbis/Opus/OpusFile/SDL2_net, giving a working precedent for omitting them initially). Also: `enable_language(OBJCXX)` for iOS (`soh:soh/soh/CMakeLists.txt:9-13` is Darwin-only today; LUS's own top-level does `Darwin OR iOS`, `lus-pinned:CMakeLists.txt:22`); pass `-DCMAKE_OSX_DEPLOYMENT_TARGET=14.0` for iOS independent of the macOS `10.15` setting (`soh:CMakeLists.txt:7`); verify which source files reference Ogg/Vorbis/Opus and confirm the existing console gating covers them (§F, Q5). Later, restore opus/vorbis custom-audio support via FetchContent of ogg/vorbis/opus/opusfile (all permissive, portable C). Done when: `cmake -GXcode -DCMAKE_SYSTEM_NAME=iOS` configures and generates for the full SoH tree.
+
+**4. SoH: decide ZAPDLib/extractor linkage for iOS (keep it) and StormLib scope.** — Size: S for the CMake decision; the extractor UI work is item 7. Depends on: 3.
+ZAPD runs **in-process as a statically linked library** — `Extractor::CallZapd` builds a fake argv and calls `zapd_report()` directly (`soh:soh/soh/Extractor/Extract.cpp:641-702`, extern at `:638`; entry point `zapdtr:ZAPD/Main.cpp:145-235`; `add_library(... STATIC ...)` at `zapdtr:ZAPD/CMakeLists.txt:263`). No process spawning exists anywhere in the pipeline, so on-device extraction is architecturally possible on iOS — keep the `NOT MATCHES "NintendoSwitch|CafeOS"` extractor inclusion (`soh:soh/CMakeLists.txt:172-184,622-626`) true for iOS, unlike consoles. StormLib (`.otr`/MPQ support, `INCLUDE_MPQ_SUPPORT ON` unconditionally at `soh:CMakeLists.txt:186`) is MIT but untested on iOS arm64 (§F, Q4); if it fails to build, `.o2r`-only via libzip is a viable reduced scope (`lus-pinned:src/ship/resource/archive/ArchiveManager.cpp:247-250` makes MPQ optional). Done when: iOS target builds with ZAPDLib linked (and StormLib either building or consciously disabled).
+
+**5. SoH: iOS app bundle, Info.plist, icons, signing.** — Size: M. Depends on: 3.
+No iOS packaging exists: no Info.plist template (the macOS one, `soh:soh/macosx/Info.plist.in`, is macOS-specific), no bundle properties on the `soh` target (`add_executable` at `soh:soh/soh/CMakeLists.txt:231`; the macOS `.app` is assembled post-hoc by CPack, `soh:CMakeLists.txt:313-319`, a path that does not apply to iOS), and SoH never sets LUS's `SIGN_LIBRARY`/`BUNDLE_ID` options (zero grep hits in `soh`). Work: `MACOSX_BUNDLE TRUE` + `MACOSX_BUNDLE_INFO_PLIST` on the target with an iOS plist (including `UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`, `UISupportedInterfaceOrientations` landscape, `GCSupportedGameControllers`/`GCSupportsControllerUserInteraction`), `XCODE_ATTRIBUTE_DEVELOPMENT_TEAM`/`CODE_SIGN_*` attributes, icon + launch screen (upstream draft PR #1083 relocates a `Launch.storyboard`/`plist.in` to the port side — reuse if it lands). Done when: Xcode produces an installable, signed `.app` for a registered device.
+
+**6. Entry point + first-launch path correctness on device.** — Size: S–M. Depends on: 3, 5.
+Verify the `SDL_main` question empirically: `soh:soh/src/code/main.c:46-60` defines `SDL_main` only under `_WIN32` and a raw `int main` otherwise, and `main.c` includes no SDL header, so the rename-to-`SDL_main` macro cannot apply in that TU; on iOS SDL2 requires its `UIApplicationMain` wrapper to invoke the app's `SDL_main`. Likely fix: extend the existing `_WIN32` pattern so iOS also defines `SDL_main`, and link `SDL2main`. Also fix the two cwd-relative file operations that would misbehave in the sandbox: `RunExtract` deleting cwd-relative `oot.o2r`/`oot-mq.o2r` (`soh:soh/soh/OTRGlobals.cpp:450-451`) and the extractor-assets root: `RunExtract` requires `GetAppBundlePath() + "/assets"` (`OTRGlobals.cpp:422,441`), but on iOS `GetAppBundlePath()` returns `Documents/` (`lus-pinned:src/ship/Context.cpp:468-471`) — either ship the ~55 MB of extraction XMLs (`soh:soh/assets/xml`, measured in-tree) in the app bundle and point iOS's `GetAppBundlePath()` at the real `[NSBundle mainBundle] resourcePath]` (implementation already exists for macOS: `lus-pinned:src/ship/utils/AppleFolderManager.mm:35-38`, compiled for `Darwin OR iOS`), or copy the assets into Documents on first run. Done when: the app launches on device, reaches the "no O2R found" flow, and finds its extraction assets.
+
+**7. iOS ROM/archive import flow.** — Size: M. Depends on: 6.
+The existing first-run flow (`OTRGlobals::RunExtract`, `soh:soh/soh/OTRGlobals.cpp:398-772`) is ImGui-rendered in-window (popups + progress modal driven by a 1-thread `BS::thread_pool`, `:454,727-761`) and ports as-is **except** its native pieces: the `pfd::open_file` ROM chooser (`soh:soh/soh/Extractor/Extract.cpp:321`; `portable-file-dialogs.h` works by `popen`-ing zenity/osascript — nonexistent on iOS), `SDL_ShowMessageBox`/`MessageBoxA` prompts (`Extract.cpp:112-189`), and the `exit(0/1)` UX pattern (an iOS app should present in-app guidance instead of exiting; note LUS already has an `#ifdef __IOS__ exit(0)` after its missing-archive dialog, `lus-pinned:src/ship/Context.cpp:251-254`, which should become a proper in-app state). Work: a `UIDocumentPickerViewController` path (Objective-C++ shim) that copies the picked `.z64/.n64/.v64` or pre-generated `.o2r` into `Documents/`, plus scanning `Documents/` (the existing ROM scan, `Extract.cpp:229-280`, already handles a directory when given the right root). Files-app drop-in works with zero code thanks to the archive discovery path (§B). The SpaghettiKart iOS release notes describe exactly this flow (Files import + async on-device extraction), so the pattern has been proven once on this stack (stated by that project's release notes; the repo itself is no longer accessible). Done when: a user with only the app and a ROM on device reaches the title screen without a desktop.
+
+**8. LUS: app lifecycle (suspend/resume/low-memory) + save flush.** — Size: M. Depends on: none to write, device to verify.
+Verified absent today: no `SDL_APP_*` cases in the event switch (`lus-pinned:src/fast/backends/gfx_sdl2.cpp:605-664`), no `AVAudioSession`/`SDL_iPhoneSetAnimationCallback` anywhere, and the only config-flush trigger is `Context::~Context()` (`lus-pinned:src/ship/Context.cpp:42-64`) reached via `exit()` — which never runs when iOS suspends-then-kills an app, so settings/saves written since the last flush are lost. Work: add `SDL_APP_WILLENTERBACKGROUND` (flush config via a new callable `Context` API; pause audio device — the method exists, `SDLAudioPlayer.cpp:15,48`; stop rendering before the handler returns, per Apple's background-GPU rule), `SDL_APP_DIDENTERFOREGROUND` (resume audio, resume loop), `SDL_APP_LOWMEMORY` (initially no-op or log; resource-cache eviction is follow-up), `SDL_APP_TERMINATING` (final flush). SDL2 delivers these as ordinary queued events into the pump the loop already runs, so this is additive — no main-loop restructuring is required (the blocking-loop model is supported by SDL2's `SDL_UIKitRunApp`). SoH's save path is already asynchronous and container-relative (`soh:soh/soh/SaveManager.cpp:54-60,129`). Done when: backgrounding mid-game, then force-killing, loses no settings/saves, and the app survives repeated suspend/resume without GPU watchdog kills.
+
+**9. LUS: ImGui/menu usability on iOS displays.** — Size: S–M. Depends on: milestone 2 (to see it).
+Font/style scale is doubled for Android only (`lus-pinned:src/ship/window/gui/Gui.cpp:73-77`; same pattern `GameOverlay.cpp:240-249`) — extend to `__IOS__`, ideally driven by the display scale factor rather than a hardcoded ×2. Touch already reaches ImGui via `SDL_HINT_TOUCH_MOUSE_EVENTS` (`lus-pinned:src/fast/Fast3dGui.cpp:91,99`) and the soft keyboard via the mobile shim (`lus-pinned:src/ship/port/mobile/MobileImpl.cpp`); ImGui gamepad navigation exists and is toggleable (`soh:soh/soh/SohGui/Menu.cpp:820,822`) — controller-driven menus, per scope, with touch as secondary. Safe-area/notch insets have no handling anywhere; needs a small shim. Done when: menus are readable and operable on an iPad and an iPhone with controller and touch.
+
+**10. SoH: per-file `__IOS__` behavior decisions.** — Size: M (mostly decisions, small diffs). Depends on: milestone 3 for testing.
+SoH carries 9–11 files each of `__SWITCH__`/`__WIIU__` conditionals but only one `__IOS__` reference in the whole tree (`soh:soh/soh/Enhancements/debugger/SohStatsWindow.cpp:12`). Each console site needs an "is iOS console-like here?" decision; the investigated list: `SaveManager.cpp` copy+remove vs `rename` (`:514,1114,1192,1203,1327,2405` — iOS supports atomic rename in-container; likely desktop behavior), `ResolutionEditor.cpp:235` (fixed-screen option: yes, treat like console), `FileSelectEnhancements.cpp:45-59` (drop-a-spoiler-log hint: remove, no drag-drop), `OTRGlobals.cpp:426-481,942-955` fatal-error UX (replace exit-with-dialog with in-app state), `bootcommands.c:13`, `ShipUtils.cpp:119`, `SohMenuSettings.cpp:140,363`, `Menu.cpp:798`, `InputViewer.cpp:158`, `SohInputEditorWindow.cpp:11`, `randomizer_check_tracker.cpp:1069`. Also `SaveManager::ConvertFromUnversioned`'s cwd-relative legacy read (`SaveManager.cpp:2732`, harmless if absent). Done when: no code path on iOS calls desktop-only UX or writes outside the container.
+
+**11. CI + upstream coordination.** — Size: S ongoing. Depends on: 3.
+Add an iOS configure+build job to the SoH fork's CI mirroring LUS's (`lus-pinned:.github/workflows/build-validation.yml:54`); without it, the port will bit-rot exactly as upstream iOS did (CI disabled Oct 2025–Feb 2026, PRs #922/#966). Track and align with draft PR Kenix3/libultraship#1083, which overlaps items 1, 2, and 5's storyboard/plist. Submit items 1, 2, 8, 9 upstream to `port-maintenance`. Done when: every push builds the iOS target green in both repos.
+
+**12. Packaging + docs.** — Size: S–M. Depends on: all above.
+Xcode archive/export flow (skip CPack for iOS — its Bundle generator is macOS-only, `soh:CMakeLists.txt:313-319`), a `docs/BUILDING.md` iOS section (currently absent; Switch/Wii U sections exist at `soh:docs/BUILDING.md:286-324`), signing instructions for free/paid developer accounts, and sideload notes (TestFlight, EU AltStore PAL, SideStore — see §E legal register and `findings/05-priorart-licensing.md` §B4). Done when: a competent developer can go from clone to device install using only the doc.
+
+**Deliberately excluded (out of scope per brief):** virtual on-screen gamepad; netplay/SDL2_net feature enablement on iOS (Anchor/Sail/CrowdControl network features follow the console precedent and stay off initially); App Store submission work.
+
+---
+
+## D. Milestones
+
+1. **iOS Xcode project configures and links (simulator or device).** SoH tree configures with `-GXcode -DCMAKE_SYSTEM_NAME=iOS`, links with items 1–3 done, launches to a black screen or asserts cleanly. Demonstrates the dependency graph closes. (Note: LUS CI already proves the *library* configures; this milestone is the first for the whole app. `OS64COMBINED` in the toolchain targets device+simulator, but Metal-on-simulator behavior is unverified for this codebase — treat device as the reference, simulator as best-effort; §F, Q7.)
+2. **Renders a frame on device.** With `soh.o2r` + a desktop-generated `oot.o2r` manually placed in the app container (Files app), the game boots and presents via Metal. Exercises renderer, resource loading, filesystem seam.
+3. **Boots to title screen and is stable.** Full boot with sound (item 1's audio fix verified), correct ImGui scaling (item 9), no watchdog kills.
+4. **Playable with an MFi/BT controller.** The controller stack is pure `SDL_GameController` with zero hidapi (verified by grep across both trees), so this should be configuration/testing rather than new code: pair a controller, play, rumble/gyro as supported by the controller class.
+5. **On-device archive generation.** Files-picker ROM import → in-app extraction (items 6, 7) → playable, no desktop involved. Extraction memory envelope: **estimate ~350–550 MB transient peak**, derived from the four allocation sites in the pipeline (64 MB fixed ROM buffer `soh:soh/soh/Extractor/Extract.h:30`; second full-ROM copy + decompressed file map in `zapdtr:ZAPD/ZRom.cpp:119,253-319`; every converted resource buffered in RAM `otrexporter:OTRExporter/Main.cpp:46,356-394`; libzip source buffers alive until `zip_close`) — not measured; measure here. Extraction is effectively single-threaded (`zapdtr:ZAPD/Main.cpp:668` forces `singleThreaded`), so time is bounded but minutes-order; it runs before the game heaps are allocated (`OTRGlobals.cpp:1527-1531` precedes `Heaps_Alloc`, `main.c:67`), which is the right ordering for peak-memory safety.
+6. **Settings, saves, lifecycle correct.** Item 8 verified on device: suspend/resume/kill matrix, audio interruption (phone call) and route change (headphones) at least not-crashing, saves never lost.
+7. **Packaged, signed, installable, documented.** Item 12; a tagged source release others can build and sideload.
+
+---
+
+## E. Risk register
+
+Technical:
+
+- **T1 — Upstream iOS churn / bit-rot.** Likelihood: high (observed base rate: iOS broke twice in two years upstream; CI disabled Oct 2025–Feb 2026; PR #1114 notes Mac/iOS CI flakiness as of May 2026). Impact: medium — rebases onto `port-maintenance` break the port. Mitigation: pin LUS exactly as SoH does; add iOS CI to the fork (item 11); upstream the small fixes so they can't drift; coordinate with #1083's author rather than duplicating.
+- **T2 — Extraction memory pressure on low-RAM devices.** Likelihood: medium on 3–4 GB devices (older iPhones), low on iPads. Impact: medium — jetsam kill during first-run extraction. Basis: the ~350–550 MB estimate above (allocation-site derived, unmeasured). Mitigation: measure at milestone 5; extraction already precedes game-heap allocation; document a minimum-device recommendation; fall back to "import a desktop-generated `.o2r`" which works today with no extraction.
+- **T3 — Shader-compile hitching.** Likelihood: high that it is observable; impact: low-medium (cold-start stutter, not failure). Basis: every process start recompiles all encountered combiner shaders via `newLibrary` — no `MTLBinaryArchive`/disk cache exists (`lus-pinned:src/fast/backends/gfx_metal.cpp:211-215,229-230`, cache is in-memory only). Mitigation: accept initially; add an MTLBinaryArchive cache later (upstreamable; benefits macOS too).
+- **T4 — Watchdog/GPU-rule kills around lifecycle.** Likelihood: high until item 8 lands (the loop currently never stops GPU work on background; events are silently dropped, `gfx_sdl2.cpp:619-663`). Impact: high for usability. Mitigation: item 8 is scheduled before any distribution milestone; test the suspend matrix explicitly.
+- **T5 — Unverified-on-iOS dependencies (StormLib, prism, libzip's transitive zlib/bzip2 config under the iOS toolchain).** Likelihood: low-medium; impact: low (each has a workaround: MPQ optional, prism is small portable code, libzip config fixable). Basis: no iOS build evidence exists for these; everything else in the graph is either header-only, already fetched by `ios.cmake`, or has first-class iOS support (full per-dependency table in `findings/01-platform-build.md` §B.3). Mitigation: resolve at milestone 1; scope-reduce to `.o2r`-only if StormLib fights back.
+- **T6 — Someone enables `ENABLE_SCRIPTING` on iOS.** Likelihood: low; impact: fatal for App Store/legality of the build (runtime TinyCC compile + `dlopen` of unsigned dylibs, `lus-pinned:src/ship/scripting/ScriptLoader.cpp:141-237`, `LibraryLoader.cpp:158`). Mitigation: add a hard `message(FATAL_ERROR)` for `ENABLE_SCRIPTING AND iOS` in the fork's CMake, not just the default-off.
+
+Legal/distribution (facts and conditions, no outcome predictions; sources in `findings/05-priorart-licensing.md`):
+
+- **L1 — Shipwright has no top-level LICENSE file.** Verified in the local checkout (`find soh -maxdepth 2 -iname 'LICENSE*'` → nothing; only a vendored subcomponent license deeper in-tree). Every dependency is permissive (LUS/ZAPDTR/OTRExporter MIT; SDL2/tinyxml2 zlib; libzip BSD-3; metal-cpp Apache-2.0; StormLib MIT per the pinned tree's own dependency table; zero GPL/LGPL anywhere). Impact: the SoH-layer code has no explicit license grant to point at. Mitigation: confirm against the live GitHub repo and ask upstream before any binary redistribution; source-only distribution of a fork of a publicly-developed repo is the community-standard posture in the meantime, but this is a gap, not a cleared item.
+- **L2 — Asset posture violations are the primary takedown trigger to control.** The conditions that historically correlate with Nintendo action are distribution of copyrighted material or circumvention tooling, not engine code per se (Yuzu settlement 2024 and Ryujinx takedown 2024 were emulators; SoH/HarbourMasters/zeldaret have operated publicly for 4+ years with no takedown found). What this project controls: never bundle or commit ROMs, `.o2r`/`.otr`, or extracted assets in the repo, the app, CI artifacts, or TestFlight builds (SoH's stated stance: `soh:README.md:16,77`); keep hash-verified user-supplied-ROM-only extraction; keep the "no piracy" posture in UI copy. An `.ipa` that ships with game data — even accidentally via a CI artifact — is the single most avoidable risk-raiser.
+- **L3 — Distribution-path constraints.** Sideloading is the realistic path per scope: source-build + personal signing works everywhere; TestFlight requires Apple review of builds; AltStore PAL is EU(+JP/BR)-region; SideStore is Apple-ID-based signing (its maintainer, SternXD, is also an active LUS iOS contributor — PR #966 — which is a useful coordination fact, not a plan dependency). App Store, if ever attempted, has a directly relevant precedent in ScummVM (reimplemented engine + user-supplied game data, approved as not-an-emulator) — stronger than the Delta/emulator carve-out — but App Store is explicitly not a goal here. Mitigation: lead with source-only + sideload docs; treat every hosted distribution channel as a separate legal review.
+
+---
+
+## F. Open questions
+
+1. **Does the whole SoH dependency graph actually build for iOS arm64?** StormLib, prism-processor, and libzip's transitive zlib/bzip2 detection under the leetal toolchain are unverified (no iOS build evidence found). Resolve by attempting milestone 1; nothing in their sources suggests a blocker.
+2. **`SDL_main` resolution on iOS.** `soh:soh/src/code/main.c` defines plain `int main` (non-Windows) and includes no SDL header, so SDL's `main`→`SDL_main` macro cannot rewrite it; whether the link against `SDL2main` still resolves correctly on iOS needs a smoke test (expectation: it needs the small fix in item 6).
+3. **Status and content of Kenix3/libultraship draft PR #1083** (coco875, "fix iOS support", open as of Apr 2026) and its relationship to the pinned `2bfbde3`. It reportedly covers CoreAudio-on-iOS and a port-side `Launch.storyboard`/plist — overlapping items 1 and 5. Resolve by reading the live PR and contacting the author before duplicating work.
+4. **Shipwright's license status** (L1). Resolve by checking the live repo and asking HarbourMasters.
+5. **Exact gating of Ogg/Vorbis/Opus/OpusFile and network sources on console builds.** Consoles link without them (`soh:soh/CMakeLists.txt:684-693`), so per-file gating must exist; the precise mechanism wasn't traced. Needed to write the iOS arm correctly (item 3). Resolve by grep/trace or by copying the Switch arm and fixing compile errors.
+6. **On-device extraction wall-clock time on iPad/iPhone-class hardware.** No basis exists to state a number: desktop runs are minutes-order (ZAPDTR prints elapsed seconds, `zapdtr:ZAPD/Main.cpp:710`) and the pipeline is single-threaded; measure at milestone 5.
+7. **Simulator viability.** The toolchain's `OS64COMBINED` includes simulator slices, and the simulator supports Metal, but nothing in this stack has been observed running there. Treat as unknown; device-first.
+8. **iPad multitasking / Stage Manager behavior** of SDL2's UIKit window + `SDL_RenderGetMetalLayer` path (resizing on split view). No code handles it; `SDL_WINDOWEVENT_SIZE_CHANGED` handling exists (`gfx_sdl2.cpp:641-647`) and may just work; verify on device.
+9. **The SpaghettiKart iOS fork's actual code.** The strongest prior art is unreachable (repo 404). If the author or a mirror resurfaces, reading its diff would de-risk items 5–7 substantially.
+10. **Minimum iOS version.** LUS CI uses `CMAKE_OSX_DEPLOYMENT_TARGET=14.0` (`lus-pinned:.github/workflows/build-validation.yml:54`) and metal-cpp is tagged `macOS13_iOS16`; whether 14.0 actually works with that metal-cpp tag, or 16.0 is the real floor, needs a build test.
+
+---
+
+## G. Reusability
+
+**Transfers to 2Ship (Majora's Mask) and Starship (Star Fox 64) directly — everything at the LUS layer.** All engine-side items (1, 2, 8, 9, and the T3 shader-cache follow-up) land in `Kenix3/libultraship`, which all three games consume as a submodule (2Ship pins the same repo; upstream's `port-maintenance` is the consolidation branch that Switch/Wii U/Android/iOS code already lives on — `soh:.gitmodules` points there, and the standalone `libultraship-wiiu` fork is 18+ months stale, confirming consolidation). This is the strongest argument for doing the LUS work as upstream contributions rather than fork-local patches: it is the difference between "SoH-iOS" and "iOS as a LUS platform" — and the brief's premise that the backend should be reusable is exactly what the upstream path buys.
+
+**Transfers as a template, not as code — the app-shell layer.** The iOS CMake arm, Info.plist/signing wiring, Files-import shim, lifecycle glue, and per-file platform decisions (items 3, 5–7, 10) are per-game but structurally identical across the three; the SoH implementation becomes a copyable pattern the same way `Waterdish/Shipwright-Android` became the template for the 2Ship Android forks.
+
+**Does not transfer: the extraction backend.** SoH and 2Ship use ZAPDTR/OTRExporter (in-process static library — ports as investigated here); Starship uses Torch, a different exporter — though the SpaghettiKart iOS effort reportedly already ported Torch to iOS as a static library, so that path has precedent too (unverifiable while that repo is down).
+
+**Recommended strategy** (matches the ecosystem's actual history, per `findings/05-priorart-licensing.md` §A5): engine work upstream to `Kenix3/libultraship` `port-maintenance` (coordinating with draft PR #1083); app shell in a dedicated SoH fork, since no mobile app layer for any platform has ever been merged into mainline Shipwright.

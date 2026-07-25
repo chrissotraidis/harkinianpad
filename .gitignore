@@ -1,0 +1,32 @@
+# --- ref/: local dump of original game material; never tracked ---
+ref/*
+!ref/README.md
+
+# --- Nintendo asset posture: ROMs, generated archives, extracted assets ---
+# Blocked repo-wide as a second layer beyond ref/. Never commit these.
+*.z64
+*.n64
+*.v64
+*.o2r
+*.otr
+*.mpq
+
+# --- upstream source checkouts (fetched by scripts/clone-sources.sh) ---
+/sources/
+
+# --- build output ---
+/build*/
+DerivedData/
+*.xcarchive
+*.ipa
+*.app
+
+# --- Xcode / macOS ---
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
+# --- editors / misc ---
+.vscode/
+.idea/
+*.log

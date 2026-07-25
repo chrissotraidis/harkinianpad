@@ -1,20 +1,7 @@
-name: ios-build
+name: HarkinianPad iOS build
 
-# The iOS build feedback loop (plan work item 11, pulled forward).
-#
-# Two jobs:
-#   lus-ios  — configure + build libultraship for iOS. This mirrors upstream's
-#              own iOS CI (libultraship .github/workflows/build-validation.yml)
-#              and is REQUIRED: if it goes red, the engine layer regressed.
-#   soh-ios  — configure the full Ship of Harkinian app for iOS. EXPECTED TO
-#              FAIL until plan work items 1-3 land (no iOS arm in SoH's CMake,
-#              CoreAudio gating, macOS-fullscreen link gap), so it is
-#              continue-on-error. Flip it to required once it first passes —
-#              that moment is milestone 1.
-#
-# Asset posture: no ROMs or generated archives are involved anywhere in this
-# workflow. Building requires none (soh.o2r is generated from the port's own
-# non-Nintendo assets); never add steps that download or cache such files.
+# Required, ROM-free proof for the sole project repository. Upstream source
+# trees are pinned build inputs; this workflow never publishes to them.
 
 on:
   push:
@@ -27,48 +14,37 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEPLOYMENT_TARGET: "14.0" # matches upstream LUS CI; real floor TBD (plan open question Q10)
+  DEPLOYMENT_TARGET: "14.0"
 
 jobs:
-  lus-ios:
-    name: libultraship (iOS, Xcode) — required
-    runs-on: macos-14
-    timeout-minutes: 90
+  ios-build:
+    name: Full app (unsigned iPhoneOS)
+    runs-on: macos-15
+    timeout-minutes: 120
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch pinned source stack
-        run: scripts/clone-sources.sh
+      - name: Install host archive-build dependencies
+        run: >-
+          brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng
+          libogg libvorbis opus opusfile
 
-      - name: Cache FetchContent dependencies
+      - name: Cache host and iOS dependencies
         uses: actions/cache@v4
         with:
-          path: build-ios-lus/_deps
-          key: lus-ios-deps-${{ runner.os }}-${{ hashFiles('sources/Shipwright/libultraship/cmake/dependencies/*.cmake') }}
+          path: |
+            build-host-soh/_deps
+            build-ios-soh/_deps
+          key: harkinianpad-ios-${{ runner.os }}-${{ hashFiles('patches/**', 'scripts/*.sh') }}
 
-      - name: Configure (LUS, iOS)
-        run: scripts/configure-ios.sh
+      - name: Reproduce unsigned arm64 iPhoneOS app
+        run: scripts/build-ios.sh --device
 
-      - name: Build (LUS, iOS)
+      - name: Audit unsigned package and signing gate
         run: |
-          cmake --build build-ios-lus --config Release -- \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
-
-  soh-ios:
-    name: full SoH app (iOS, Xcode) — expected to fail until WI-1..3
-    runs-on: macos-14
-    timeout-minutes: 90
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Fetch pinned source stack
-        run: scripts/clone-sources.sh
-
-      - name: Configure (SoH app, iOS)
-        run: scripts/configure-ios.sh --soh
-
-      - name: Build (SoH app, iOS)
-        run: |
-          cmake --build build-ios-soh --config Release -- \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          scripts/package-ios.sh
+          if REQUIRE_SIGNED=1 scripts/package-ios.sh; then
+            echo "Unsigned CI app unexpectedly passed REQUIRE_SIGNED=1" >&2
+            exit 1
+          fi

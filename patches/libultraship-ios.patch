@@ -1,0 +1,480 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 08cc7915..34c3369d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,6 +12,9 @@ option(DISABLE_DLL_LOADER "Disable dynamic library loading support" OFF)
+ option(ENABLE_SCRIPTING "Enable TCC-based C mod compilation and scripting system" OFF)
+ 
+ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    if(ENABLE_SCRIPTING)
++        message(FATAL_ERROR "ENABLE_SCRIPTING is unsupported on iOS")
++    endif()
+     option(SIGN_LIBRARY "Enable xcode signing" OFF)
+     option(BUNDLE_ID "Bundle ID for xcode signing" "com.example.libultraship")
+     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+diff --git a/cmake/dependencies/common.cmake b/cmake/dependencies/common.cmake
+index 80dec56e..d3e72c86 100644
+--- a/cmake/dependencies/common.cmake
++++ b/cmake/dependencies/common.cmake
+@@ -52,13 +52,26 @@ endif()
+ 
+ #=================== STB ===================
+ set(STB_DIR ${CMAKE_BINARY_DIR}/_deps/stb)
+-file(DOWNLOAD "https://github.com/nothings/stb/raw/0bc88af4de5fb022db643c2d8e549a0927749354/stb_image.h" "${STB_DIR}/stb_image.h")
++set(STB_IMAGE_PATH "${STB_DIR}/stb_image.h")
++set(STB_IMAGE_SHA256
++    c54b15a689e6a1f32c75e2ec23afa442e3e0e37e894b73c1974d08679b20dd5c)
++if(EXISTS "${STB_IMAGE_PATH}")
++    file(SHA256 "${STB_IMAGE_PATH}" STB_IMAGE_EXISTING_SHA256)
++endif()
++if(NOT STB_IMAGE_EXISTING_SHA256 STREQUAL STB_IMAGE_SHA256)
++    file(DOWNLOAD
++        "https://raw.githubusercontent.com/nothings/stb/0bc88af4de5fb022db643c2d8e549a0927749354/stb_image.h"
++        "${STB_IMAGE_PATH}"
++        EXPECTED_HASH SHA256=${STB_IMAGE_SHA256}
++        TLS_VERIFY ON
++    )
++endif()
+ file(WRITE "${STB_DIR}/stb_impl.c" "#define STB_IMAGE_IMPLEMENTATION\n#include \"stb_image.h\"")
+ 
+ add_library(stb STATIC)
+ 
+ target_sources(stb PRIVATE
+-    ${STB_DIR}/stb_image.h
++    ${STB_IMAGE_PATH}
+     ${STB_DIR}/stb_impl.c
+ )
+ 
+@@ -307,4 +320,4 @@ if(NOT TARGET libtcc)
+     endif()
+ endif()
+ 
+-endif() # ENABLE_SCRIPTING
+\ No newline at end of file
++endif() # ENABLE_SCRIPTING
+diff --git a/include/fast/backends/gfx_sdl.h b/include/fast/backends/gfx_sdl.h
+index 79042f4e..70a353bd 100644
+--- a/include/fast/backends/gfx_sdl.h
++++ b/include/fast/backends/gfx_sdl.h
+@@ -59,6 +59,9 @@ class GfxWindowBackendSDL2 final : public GfxWindowBackend {
+     int mSdlToLusTable[512];
+     float mMouseWheelX = 0.0f;
+     float mMouseWheelY = 0.0f;
++#ifdef __IOS__
++    bool mIsBackgrounded = false;
++#endif
+ #ifdef __OpenBSD__
+     int mBsdTick; // store kern.clockrate's tick (microseconds) to adjust sleep timing
+ #endif
+diff --git a/include/ship/audio/Audio.h b/include/ship/audio/Audio.h
+index 92513091..9e1d69db 100644
+--- a/include/ship/audio/Audio.h
++++ b/include/ship/audio/Audio.h
+@@ -68,6 +68,9 @@ class Audio {
+      */
+     AudioChannelsSetting GetAudioChannels() const;
+ 
++    /** @brief Pauses or resumes the active audio backend. */
++    void SetPaused(bool paused);
++
+   protected:
+     /** @brief (Re)initialises the AudioPlayer for the current backend and channel settings. */
+     void InitAudioPlayer();
+diff --git a/include/ship/audio/AudioPlayer.h b/include/ship/audio/AudioPlayer.h
+index 2725ec3c..1cde3ff2 100644
+--- a/include/ship/audio/AudioPlayer.h
++++ b/include/ship/audio/AudioPlayer.h
+@@ -71,6 +71,15 @@ class AudioPlayer {
+     /** @brief Returns true if Init() has been called and succeeded. */
+     bool IsInitialized();
+ 
++    /**
++     * @brief Pauses or resumes output without destroying the audio backend.
++     *
++     * Backends that do not require explicit pause handling may keep the
++     * default no-op implementation.
++     */
++    virtual void SetPaused(bool) {
++    }
++
+     /** @brief Returns the configured output sample rate in Hz. */
+     int32_t GetSampleRate() const;
+ 
+@@ -158,7 +167,7 @@ class AudioPlayer {
+ #include "WasapiAudioPlayer.h"
+ #endif
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+ #include "CoreAudioAudioPlayer.h"
+ #endif
+ 
+diff --git a/include/ship/audio/SDLAudioPlayer.h b/include/ship/audio/SDLAudioPlayer.h
+index ac61dd36..b440c059 100644
+--- a/include/ship/audio/SDLAudioPlayer.h
++++ b/include/ship/audio/SDLAudioPlayer.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include "AudioPlayer.h"
++#include <atomic>
+ #include <SDL2/SDL.h>
+ 
+ namespace Ship {
+@@ -29,6 +30,9 @@ class SDLAudioPlayer final : public AudioPlayer {
+      */
+     int Buffered() override;
+ 
++    /** @brief Pauses/resumes the SDL device and drops audio queued before a pause. */
++    void SetPaused(bool paused) override;
++
+   protected:
+     /**
+      * @brief Opens the SDL audio device with the configured settings.
+@@ -51,5 +55,6 @@ class SDLAudioPlayer final : public AudioPlayer {
+   private:
+     SDL_AudioDeviceID mDevice = 0; ///< Handle to the opened SDL audio device.
+     int32_t mNumChannels = 2;      ///< Number of output channels (2 for stereo, 6 for 5.1).
++    std::atomic<bool> mPaused = false;
+ };
+ } // namespace Ship
+diff --git a/src/ship/Context.cpp b/src/ship/Context.cpp
+index 9317d209..50a87eec 100644
+--- a/src/ship/Context.cpp
++++ b/src/ship/Context.cpp
+@@ -465,11 +465,6 @@ std::string Context::GetAppBundlePath() {
+     }
+ #endif
+ 
+-#ifdef __IOS__
+-    const char* home = getenv("HOME");
+-    return std::string(home) + "/Documents";
+-#endif
+-
+ #ifdef NON_PORTABLE
+     return CMAKE_INSTALL_PREFIX;
+ #else
+diff --git a/src/fast/Fast3dWindow.cpp b/src/fast/Fast3dWindow.cpp
+index 2b77a5f2..4e71d61d 100644
+--- a/src/fast/Fast3dWindow.cpp
++++ b/src/fast/Fast3dWindow.cpp
+@@ -126,10 +126,18 @@ void Fast3dWindow::SetMaximumFrameLatency(int32_t latency) {
+ }
+ 
+ void Fast3dWindow::GetPixelDepthPrepare(float x, float y) {
++    if (!IsFrameReady()) {
++        return;
++    }
++
+     mInterpreter->GetPixelDepthPrepare(x, y);
+ }
+ 
+ uint16_t Fast3dWindow::GetPixelDepth(float x, float y) {
++    if (!IsFrameReady()) {
++        return 0;
++    }
++
+     return mInterpreter->GetPixelDepth(x, y);
+ }
+ 
+diff --git a/src/fast/backends/gfx_sdl2.cpp b/src/fast/backends/gfx_sdl2.cpp
+index 15c5415f..99cb4332 100644
+--- a/src/fast/backends/gfx_sdl2.cpp
++++ b/src/fast/backends/gfx_sdl2.cpp
+@@ -11,6 +11,11 @@
+ #endif
+ 
+ #include "ship/Context.h"
++#ifdef __IOS__
++#include "ship/audio/Audio.h"
++#include "ship/config/Config.h"
++#include "ship/window/Window.h"
++#endif
+ #include "ship/config/ConsoleVariable.h"
+ #include "ship/controller/controldeck/ControlDeck.h"
+ #include "ship/window/FileDropMgr.h"
+@@ -53,6 +58,25 @@ LONG_PTR SDL_WndProc;
+ #endif
+ 
+ namespace Fast {
++#ifdef __IOS__
++static void SaveIOSConfiguration() {
++    auto context = Ship::Context::GetRawInstance();
++    if (context->GetWindow() != nullptr) {
++        context->GetWindow()->SaveWindowToConfig();
++    }
++    if (context->GetConfig() != nullptr) {
++        context->GetConfig()->Save();
++    }
++}
++
++static void SetIOSAudioPaused(bool paused) {
++    auto audio = Ship::Context::GetRawInstance()->GetAudio();
++    if (audio != nullptr) {
++        audio->SetPaused(paused);
++    }
++}
++#endif
++
+ const SDL_Scancode lus_to_sdl_table[] = {
+     SDL_SCANCODE_UNKNOWN,
+     SDL_SCANCODE_ESCAPE,
+@@ -235,7 +252,7 @@ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
+         }
+     }
+ 
+-#if defined(__APPLE__)
++#if defined(__APPLE__) && !defined(__IOS__)
+     // Implement fullscreening with native macOS APIs
+     if (on != isNativeMacOSFullscreenActive(mWnd)) {
+         toggleNativeMacOSFullscreen(mWnd);
+@@ -657,6 +674,29 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
+         case SDL_DROPFILE:
+             Ship::Context::GetRawInstance()->GetFileDropMgr()->SetDroppedFile(event.drop.file);
+             break;
++#ifdef __IOS__
++        case SDL_APP_WILLENTERBACKGROUND:
++            mIsBackgrounded = true;
++            SaveIOSConfiguration();
++            SetIOSAudioPaused(true);
++            break;
++        case SDL_APP_DIDENTERBACKGROUND:
++            break;
++        case SDL_APP_WILLENTERFOREGROUND:
++            break;
++        case SDL_APP_DIDENTERFOREGROUND:
++            SetIOSAudioPaused(false);
++            mIsBackgrounded = false;
++            break;
++        case SDL_APP_LOWMEMORY:
++            SPDLOG_WARN("iOS reported low memory");
++            break;
++        case SDL_APP_TERMINATING:
++            mIsBackgrounded = true;
++            SaveIOSConfiguration();
++            SetIOSAudioPaused(true);
++            break;
++#endif
+         case SDL_QUIT:
+             Close();
+             break;
+@@ -674,7 +714,7 @@ void GfxWindowBackendSDL2::HandleEvents() {
+     }
+ 
+     // resync fullscreen state
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     auto nextFullscreenState = isNativeMacOSFullscreenActive(mWnd);
+     if (mFullScreen != nextFullscreenState) {
+         mFullScreen = nextFullscreenState;
+@@ -686,7 +726,11 @@ void GfxWindowBackendSDL2::HandleEvents() {
+ }
+ 
+ bool GfxWindowBackendSDL2::IsFrameReady() {
++#ifdef __IOS__
++    return !mIsBackgrounded;
++#else
+     return true;
++#endif
+ }
+ 
+ static uint64_t qpc_to_100ns(uint64_t qpc) {
+diff --git a/src/ship/audio/Audio.cpp b/src/ship/audio/Audio.cpp
+index 8cc5b12e..b24d7ad7 100644
+--- a/src/ship/audio/Audio.cpp
++++ b/src/ship/audio/Audio.cpp
+@@ -1,6 +1,6 @@
+ #include "ship/audio/Audio.h"
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+ #include "ship/audio/CoreAudioAudioPlayer.h"
+ #endif
+ 
+@@ -21,7 +21,7 @@ void Audio::InitAudioPlayer() {
+             mAudioPlayer = std::make_shared<WasapiAudioPlayer>(this->mAudioSettings);
+             break;
+ #endif
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+         case AudioBackend::COREAUDIO:
+             mAudioPlayer = std::make_shared<CoreAudioAudioPlayer>(this->mAudioSettings);
+             break;
+@@ -48,7 +48,7 @@ void Audio::Init() {
+ #ifdef _WIN32
+     mAvailableAudioBackends->push_back(AudioBackend::WASAPI);
+ #endif
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     mAvailableAudioBackends->push_back(AudioBackend::COREAUDIO);
+ #endif
+     mAvailableAudioBackends->push_back(AudioBackend::SDL);
+@@ -97,7 +97,7 @@ AudioBackend Audio::GetSavedAudioBackend() {
+     return AudioBackend::WASAPI;
+ #endif
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     return AudioBackend::COREAUDIO;
+ #endif
+ 
+@@ -146,6 +146,12 @@ AudioChannelsSetting Audio::GetAudioChannels() const {
+     return mAudioSettings.ChannelSetting;
+ }
+ 
++void Audio::SetPaused(bool paused) {
++    if (mAudioPlayer) {
++        mAudioPlayer->SetPaused(paused);
++    }
++}
++
+ AudioChannelsSetting Audio::GetSavedAudioChannelsSetting() {
+     int32_t channelsSetting =
+         mConfig->GetInt("CVars." CVAR_AUDIO_CHANNELS_SETTING, static_cast<int32_t>(AudioChannelsSetting::audioMax));
+diff --git a/src/ship/audio/SDLAudioPlayer.cpp b/src/ship/audio/SDLAudioPlayer.cpp
+index d9f1e44d..4ea83a08 100644
+--- a/src/ship/audio/SDLAudioPlayer.cpp
++++ b/src/ship/audio/SDLAudioPlayer.cpp
+@@ -53,8 +53,19 @@ int SDLAudioPlayer::Buffered() {
+     return SDL_GetQueuedAudioSize(mDevice) / (sizeof(int16_t) * mNumChannels);
+ }
+ 
++void SDLAudioPlayer::SetPaused(bool paused) {
++    mPaused = paused;
++    if (mDevice == 0) {
++        return;
++    }
++    SDL_PauseAudioDevice(mDevice, paused ? 1 : 0);
++    if (paused) {
++        SDL_ClearQueuedAudio(mDevice);
++    }
++}
++
+ void SDLAudioPlayer::DoPlay(const uint8_t* buf, size_t len) {
+-    if (Buffered() < 6000) {
++    if (!mPaused && Buffered() < 6000) {
+         // Don't fill the audio buffer too much in case this happens
+         SDL_QueueAudio(mDevice, buf, len);
+     }
+diff --git a/cmake/ios-toolchain-populate.cmake b/cmake/ios-toolchain-populate.cmake
+index eb93fea4..644bcc26 100644
+--- a/cmake/ios-toolchain-populate.cmake
++++ b/cmake/ios-toolchain-populate.cmake
+@@ -1,4 +1,6 @@
+-set(PLATFORM "OS64COMBINED")
++if(NOT DEFINED PLATFORM)
++    set(PLATFORM "OS64COMBINED")
++endif()
+ include(FetchContent)
+ FetchContent_Declare(iostoolchain
+     GIT_REPOSITORY https://github.com/leetal/ios-cmake
+@@ -12,4 +14,4 @@ if(NOT iostoolchain_POPULATED)
+ endif()
+ set(CMAKE_IOS_TOOLCHAIN_FILE ${iostoolchain_SOURCE_DIR}/ios.toolchain.cmake)
+ set_property(GLOBAL PROPERTY IOS_TOOLCHAIN_FILE ${CMAKE_IOS_TOOLCHAIN_FILE})
+-include(${CMAKE_IOS_TOOLCHAIN_FILE})
+\ No newline at end of file
++include(${CMAKE_IOS_TOOLCHAIN_FILE})
+diff --git a/include/libultraship/bridge/windowbridge.h b/include/libultraship/bridge/windowbridge.h
+index e1a1f017..7c60f903 100644
+--- a/include/libultraship/bridge/windowbridge.h
++++ b/include/libultraship/bridge/windowbridge.h
+@@ -10,6 +10,13 @@ extern "C" {
+ /** @brief Returns true if the application window is running (has not been closed). */
+ API_EXPORT bool WindowIsRunning();
+ 
++/**
++ * @brief Processes window events and returns true when the next game frame may run.
++ *
++ * A false result yields briefly so suspended mobile apps do not spin their game loop.
++ */
++API_EXPORT bool WindowIsFrameReady();
++
+ /** @brief Returns the current width of the game window in pixels. */
+ API_EXPORT uint32_t WindowGetWidth();
+ 
+diff --git a/src/libultraship/bridge/windowbridge.cpp b/src/libultraship/bridge/windowbridge.cpp
+index 295c4dc2..e100d305 100644
+--- a/src/libultraship/bridge/windowbridge.cpp
++++ b/src/libultraship/bridge/windowbridge.cpp
+@@ -2,6 +2,9 @@
+ #include "ship/window/Window.h"
+ #include "ship/Context.h"
+ 
++#include <chrono>
++#include <thread>
++
+ extern "C" {
+ 
+ uint32_t WindowGetWidth() {
+@@ -20,6 +23,17 @@ bool WindowIsRunning() {
+     return Ship::Context::GetRawInstance()->GetWindow()->IsRunning();
+ }
+ 
++bool WindowIsFrameReady() {
++    auto window = Ship::Context::GetRawInstance()->GetWindow();
++    window->HandleEvents();
++
++    const bool ready = window->IsRunning() && window->IsFrameReady();
++    if (!ready) {
++        std::this_thread::sleep_for(std::chrono::milliseconds(16));
++    }
++    return ready;
++}
++
+ int32_t WindowGetPosX() {
+     return Ship::Context::GetRawInstance()->GetWindow()->GetPosX();
+ }
+diff --git a/src/ship/window/gui/GameOverlay.cpp b/src/ship/window/gui/GameOverlay.cpp
+index eaea3cd7..5bc888a9 100644
+--- a/src/ship/window/gui/GameOverlay.cpp
++++ b/src/ship/window/gui/GameOverlay.cpp
+@@ -237,9 +237,10 @@ void GameOverlay::Draw() {
+             const float duration = overlay.duration / overlay.fadeTime;
+ 
+             const ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, duration);
+-#ifdef __ANDROID__
+-            const float textWidth = GetStringWidth(overlay.Value.c_str()) * 2.0f;
+-            const float textOffset = 40.0f * 2.0f;
++#if defined(__ANDROID__) || defined(__IOS__)
++            const float mobileScale = ImGui::GetIO().FontGlobalScale;
++            const float textWidth = GetStringWidth(overlay.Value.c_str()) * mobileScale;
++            const float textOffset = 40.0f * mobileScale;
+ #else
+             const float textWidth = GetStringWidth(overlay.Value.c_str());
+             const float textOffset = 40.0f;
+diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
+index 1cf50fcc..6b06c69f 100644
+--- a/src/ship/window/gui/Gui.cpp
++++ b/src/ship/window/gui/Gui.cpp
+@@ -7,6 +7,10 @@
+ #include <string>
+ #include <vector>
+ 
++#ifdef __IOS__
++#include <SDL2/SDL.h>
++#endif
++
+ #include "ship/config/Config.h"
+ #include "ship/Context.h"
+ #include "ship/config/ConsoleVariable.h"
+@@ -71,9 +75,19 @@ void Gui::Init() {
+                                                           &iconsConfig, sIconsRanges);
+ 
+ #if defined(__ANDROID__)
+-    // Scale everything by 2 for Android
+     ImGui::GetStyle().ScaleAllSizes(2.0f);
+     mImGuiIo->FontGlobalScale = 2.0f;
++#elif defined(__IOS__)
++    SDL_Rect displayBounds = {};
++    float uiScale = 1.0f;
++    if (SDL_GetDisplayUsableBounds(0, &displayBounds) == 0) {
++        const int shortestSide = displayBounds.w < displayBounds.h ? displayBounds.w : displayBounds.h;
++        if (shortestSide >= 600) {
++            uiScale = 2.0f;
++        }
++    }
++    ImGui::GetStyle().ScaleAllSizes(uiScale);
++    mImGuiIo->FontGlobalScale = uiScale;
+ #endif
+ 
+     mImGuiIniPath = Context::GetPathRelativeToAppDirectory("imgui.ini");

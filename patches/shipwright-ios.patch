@@ -1,0 +1,797 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d92b7379b..fa8028a4d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,6 +1,14 @@
+ cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
+ 
+-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    set(CMAKE_SYSTEM_VERSION "${DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
++    if(PLATFORM STREQUAL "SIMULATORARM64")
++        set(CMAKE_OSX_SYSROOT "iphonesimulator" CACHE STRING "" FORCE)
++        set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
++    endif()
++else()
++    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
++endif()
+ set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
+ set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
+ 
+@@ -182,6 +186,11 @@ set(GFX_DEBUG_DISASSEMBLER ON)
+ set(GBI_UCODE F3DEX_GBI_2)
+ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
+ 
++# Dependencies that are not provided by the iOS SDK.
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    include(CMake/ios.cmake)
++endif()
++
+ # Enable MPQ and OTR support
+ set(INCLUDE_MPQ_SUPPORT ON)
+ 
+@@ -205,6 +214,12 @@ add_subdirectory(libultraship ${CMAKE_BINARY_DIR}/libultraship)
+ target_compile_options(libultraship PRIVATE "${WARNING_OVERRIDE}")
+ target_compile_definitions(libultraship PUBLIC INCLUDE_MPQ_SUPPORT)
+ add_subdirectory(ZAPDTR/ZAPD ${CMAKE_BINARY_DIR}/ZAPD)
+ add_subdirectory(OTRExporter)
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    target_link_libraries(OTRExporter PUBLIC
++        tinyxml2::tinyxml2
++        libzip::zip
++    )
++endif()
+ add_subdirectory(soh)
+ 
+ set_property(TARGET soh PROPERTY APPIMAGE_DESKTOP_FILE_TERMINAL YES)
+diff --git a/CMake/ios.cmake b/CMake/ios.cmake
+new file mode 100644
+index 000000000..30adad262
+--- /dev/null
++++ b/CMake/ios.cmake
+@@ -0,0 +1,90 @@
++include(FetchContent)
++
++# ZAPDLib runs in-process for first-launch asset extraction and requires PNG.
++set(PNG_SHARED OFF CACHE BOOL "" FORCE)
++set(PNG_STATIC ON CACHE BOOL "" FORCE)
++set(PNG_FRAMEWORK OFF CACHE BOOL "" FORCE)
++set(PNG_TESTS OFF CACHE BOOL "" FORCE)
++set(PNG_TOOLS OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(
++    PNG
++    GIT_REPOSITORY https://github.com/pnggroup/libpng.git
++    GIT_TAG v1.6.54
++    OVERRIDE_FIND_PACKAGE
++)
++FetchContent_MakeAvailable(PNG)
++
++# libpng's build-tree target is not exported under its installed package name.
++if(NOT TARGET PNG::PNG)
++    add_library(PNG::PNG ALIAS png_static)
++endif()
++
++# Keep the desktop custom-audio formats available in the iOS build.
++set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
++set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
++set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
++set(INSTALL_DOCS OFF CACHE BOOL "" FORCE)
++set(INSTALL_PKG_CONFIG_MODULE OFF CACHE BOOL "" FORCE)
++set(INSTALL_CMAKE_PACKAGE_MODULE OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(
++    Ogg
++    GIT_REPOSITORY https://github.com/xiph/ogg.git
++    GIT_TAG v1.3.6
++    OVERRIDE_FIND_PACKAGE
++)
++FetchContent_MakeAvailable(Ogg)
++
++FetchContent_Declare(
++    Vorbis
++    GIT_REPOSITORY https://github.com/xiph/vorbis.git
++    GIT_TAG v1.3.7
++)
++FetchContent_MakeAvailable(Vorbis)
++if(NOT TARGET Vorbis::vorbis)
++    add_library(Vorbis::vorbis ALIAS vorbis)
++    add_library(Vorbis::vorbisenc ALIAS vorbisenc)
++    add_library(Vorbis::vorbisfile ALIAS vorbisfile)
++endif()
++
++set(OPUS_BUILD_TESTING OFF CACHE BOOL "" FORCE)
++set(OPUS_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
++FetchContent_Declare(
++    Opus
++    GIT_REPOSITORY https://github.com/xiph/opus.git
++    GIT_TAG v1.5.2
++)
++FetchContent_MakeAvailable(Opus)
++if(NOT TARGET Opus::opus)
++    add_library(Opus::opus ALIAS opus)
++endif()
++
++# Match the installed Opus header layout expected by Shipwright.
++set(OPUS_COMPAT_INCLUDE_DIR "${CMAKE_BINARY_DIR}/harkinianpad-include")
++file(COPY "${opus_SOURCE_DIR}/include/"
++    DESTINATION "${OPUS_COMPAT_INCLUDE_DIR}/opus"
++)
++target_include_directories(opus INTERFACE
++    "$<BUILD_INTERFACE:${OPUS_COMPAT_INCLUDE_DIR}>"
++)
++
++# opusfile 0.12 has no CMake project; build its local-file decoder directly.
++FetchContent_Declare(
++    OpusFile
++    GIT_REPOSITORY https://github.com/xiph/opusfile.git
++    GIT_TAG v0.12
++    SOURCE_SUBDIR cmake-not-available
++)
++FetchContent_MakeAvailable(OpusFile)
++add_library(opusfile STATIC
++    ${opusfile_SOURCE_DIR}/src/info.c
++    ${opusfile_SOURCE_DIR}/src/internal.c
++    ${opusfile_SOURCE_DIR}/src/opusfile.c
++    ${opusfile_SOURCE_DIR}/src/stream.c
++)
++target_compile_definitions(opusfile PRIVATE OP_DISABLE_HTTP)
++target_include_directories(opusfile
++    PUBLIC ${opusfile_SOURCE_DIR}/include
++    PRIVATE ${opusfile_SOURCE_DIR}/src
++)
++target_link_libraries(opusfile PUBLIC Ogg::ogg Opus::opus)
++add_library(OpusFile::opusfile ALIAS opusfile)
+diff --git a/soh/CMakeLists.txt b/soh/CMakeLists.txt
+index 615fdeafe..6e57d8c3d 100644
+--- a/soh/CMakeLists.txt
++++ b/soh/CMakeLists.txt
+@@ -1,12 +1,16 @@
+ cmake_minimum_required(VERSION 3.26.0 FATAL_ERROR)
+ 
+-set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    set(CMAKE_SYSTEM_VERSION "${DEPLOYMENT_TARGET}" CACHE STRING "" FORCE)
++else()
++    set(CMAKE_SYSTEM_VERSION 10.0 CACHE STRING "" FORCE)
++endif()
+ 
+ project(soh LANGUAGES C CXX)
+ set(CMAKE_CXX_STANDARD 20 CACHE STRING "The C++ standard to use")
+ set(CMAKE_C_STANDARD 23 CACHE STRING "The C standard to use")
+ 
+-if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
++if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+     enable_language(OBJCXX)
+     set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS} -fobjc-arc")
+     set(CMAKE_OBJCXX_FLAGS "${CMAKE_OBJCXX_FLAGS} -fobjc-arc")
+@@ -137,6 +141,11 @@ file(GLOB_RECURSE soh__ RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "soh/*.c" "soh/*.cp
+ # Add specific files that don't match the pattern
+ list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/soh/Enhancements/speechsynthesizer/DarwinSpeechSynthesizer.mm)
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    list(FILTER soh__ EXCLUDE REGEX "^soh/Network/")
++    list(FILTER soh__ EXCLUDE REGEX "^soh/SohGui/SohMenuNetwork\\.cpp$")
++endif()
++
+ # Create source groups that match the real file directory paths
+ foreach(source IN LISTS soh__)
+     get_filename_component(source_path "${source}" PATH)
+@@ -155,7 +164,7 @@ endif()
+ # handle speechsynthesizer removals
+ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/Darwin")
+-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
++elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/SAPI")
+ else()
+     list(FILTER soh__ EXCLUDE REGEX "soh/Enhancements/speechsynthesizer/(Darwin|SAPI)")
+@@ -254,6 +258,16 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+         XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES
+         OUTPUT_NAME "soh-macos"
+     )
++elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    set_target_properties(${PROJECT_NAME} PROPERTIES
++        MACOSX_BUNDLE TRUE
++        MACOSX_BUNDLE_GUI_IDENTIFIER "${BUNDLE_ID}"
++        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/ios/Info.plist.in"
++        OUTPUT_NAME "HarkinianPad"
++        XCODE_ATTRIBUTE_CLANG_ENABLE_OBJC_ARC YES
++        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${BUNDLE_ID}"
++        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
++    )
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+     set_target_properties(${PROJECT_NAME} PROPERTIES
+     OUTPUT_NAME "soh.elf"
+@@ -302,12 +310,14 @@ FetchContent_MakeAvailable(dr_libs)
+ find_package(SDL2)
+ set(SDL2-INCLUDE ${SDL2_INCLUDE_DIRS})
+ 
+-find_package(SDL2_net)
++if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    find_package(SDL2_net)
+ 
+-if(NOT SDL2_net_FOUND)
+-    message(STATUS "SDL2_net not found (it's possible the version installed is too old).")
+-else()
+-    set(SDL2-NET-INCLUDE ${SDL_NET_INCLUDE_DIRS})
++    if(NOT SDL2_net_FOUND)
++        message(STATUS "SDL2_net not found (it's possible the version installed is too old).")
++    else()
++        set(SDL2-NET-INCLUDE ${SDL_NET_INCLUDE_DIRS})
++    endif()
+ endif()
+ 
+ if (ESPEAK)
+@@ -373,6 +383,18 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+             NOMINMAX
+         )
+     endif()
++elseif (CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    target_compile_definitions(${PROJECT_NAME} PRIVATE
++        "$<$<CONFIG:Debug>:_DEBUG>"
++        "$<$<CONFIG:Release>:NDEBUG>"
++        "SOH_DISABLE_NETWORKING;"
++        "__IOS__;"
++        "F3DEX_GBI_2;"
++        "_CONSOLE;"
++        "_CRT_SECURE_NO_WARNINGS;"
++        SPDLOG_ACTIVE_LEVEL=${SPDLOG_MIN_CUTOFF}
++        LOG_LEVEL_GAME_PRINTS=${SPDLOG_LEVEL_OFF}
++    )
+ elseif (CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
+     target_compile_definitions(${PROJECT_NAME} PRIVATE
+         "$<$<CONFIG:Debug>:"
+@@ -482,7 +503,7 @@ if(MSVC)
+ endif()
+ 
+ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+-    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
++    if (CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS")
+         target_compile_options(${PROJECT_NAME} PRIVATE
+             -Wall -Wextra -Wno-error
+             -Wformat-security
+@@ -587,7 +608,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+         target_link_options(${PROJECT_NAME} PRIVATE
+             -pthread
+                 #-fsanitize=address
+-            -Wl,-export-dynamic
+         )
++        if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
++            target_link_options(${PROJECT_NAME} PRIVATE -Wl,-export-dynamic)
++        endif()
+     endif()
+ endif()
+@@ -613,6 +648,31 @@ if(NOT CMAKE_SYSTEM_NAME MATCHES "NintendoSwitch|CafeOS")
+     #    COMMAND ${VS_COPY_ASSETS_CMD}
+     )
+ endif()
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/soh.o2r")
++        add_custom_command(
++            TARGET ${PROJECT_NAME}
++            POST_BUILD
++            COMMENT "Copying ROM-free port archive..."
++            COMMAND ${CMAKE_COMMAND} -E copy_if_different
++                "${CMAKE_CURRENT_SOURCE_DIR}/soh.o2r"
++                "$<TARGET_FILE_DIR:soh>/soh.o2r"
++        )
++    else()
++        message(WARNING
++            "soh.o2r is not available. Generate the ROM-free port archive "
++            "before packaging HarkinianPad."
++        )
++    endif()
++    add_custom_command(
++        TARGET ${PROJECT_NAME}
++        POST_BUILD
++        COMMENT "Copying controller mappings..."
++        COMMAND ${CMAKE_COMMAND} -E copy_if_different
++            "${CMAKE_BINARY_DIR}/gamecontrollerdb.txt"
++            "$<TARGET_FILE_DIR:soh>/gamecontrollerdb.txt"
++    )
++endif()
+ ################################################################################
+ # Dependencies
+ ################################################################################
+@@ -691,6 +751,22 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "CafeOS")
+     target_include_directories(${PROJECT_NAME} PRIVATE
+         ${DEVKITPRO}/portlibs/wiiu/include/
+     )
++elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    set(THREADS_PREFER_PTHREAD_FLAG ON)
++    find_package(Threads REQUIRED)
++    set(ADDITIONAL_LIBRARY_DEPENDENCIES
++        "libultraship;"
++        "ZAPDLib;"
++        SDL2::SDL2-static
++        SDL2::SDL2main
++        Ogg::ogg
++        Vorbis::vorbis
++        Vorbis::vorbisenc
++        Vorbis::vorbisfile
++        Opus::opus
++        OpusFile::opusfile
++        Threads::Threads
++    )
+ else()
+     find_package(SDL2)
+     set(THREADS_PREFER_PTHREAD_FLAG ON)
+@@ -715,7 +791,7 @@ else()
+     )
+ endif()
+ 
+-if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|NintendoSwitch|CafeOS")
++if(NOT CMAKE_SYSTEM_NAME MATCHES "Darwin|iOS|NintendoSwitch|CafeOS")
+ INSTALL(TARGETS soh DESTINATION . COMPONENT ship)
+ endif()
+ 
+@@ -725,14 +801,38 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/soh/soh.o2r DESTINATION . COMPONENT ship)
+ endif()
+ 
+ find_program(CURL NAMES curl DOC "Path to the curl program.  Used to download files.")
+-execute_process(COMMAND ${CURL} -sSfL https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt -o ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt OUTPUT_VARIABLE RESULT)
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    set(CONTROLLER_DB_COMMIT "03d390c37b1342fcb7d8d294cd9621ab9d640bb3")
++    set(CONTROLLER_DB_SHA256 "eb002773dc8a16aa96f9ee2609798e231a9deb60c45e21fbdd4e221c9e8b7d77")
++    set(CONTROLLER_DB_URL
++        "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/${CONTROLLER_DB_COMMIT}/gamecontrollerdb.txt"
++    )
++else()
++    set(CONTROLLER_DB_URL
++        "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"
++    )
++endif()
++execute_process(
++    COMMAND ${CURL} -sSfL ${CONTROLLER_DB_URL}
++        -o ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt
++    RESULT_VARIABLE CONTROLLER_DB_RESULT
++)
++if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    if(NOT CONTROLLER_DB_RESULT EQUAL 0)
++        message(FATAL_ERROR "Failed to download pinned controller mappings")
++    endif()
++    file(SHA256 ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt CONTROLLER_DB_ACTUAL_SHA256)
++    if(NOT CONTROLLER_DB_ACTUAL_SHA256 STREQUAL CONTROLLER_DB_SHA256)
++        message(FATAL_ERROR "Pinned controller mapping checksum mismatch")
++    endif()
++endif()
+ 
+ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+ configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/macosx/Info.plist.in ${CMAKE_BINARY_DIR}/macosx/Info.plist @ONLY)
+ INSTALL(TARGETS soh DESTINATION ../MacOS COMPONENT ship)
+ INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION ../MacOS COMPONENT ship)
+ INSTALL(FILES ${CMAKE_BINARY_DIR}/soh/soh.o2r DESTINATION ../Resources COMPONENT ship)
+-elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "NintendoSwitch|CafeOS")
++elseif(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "iOS|NintendoSwitch|CafeOS")
+ INSTALL(FILES ${CMAKE_BINARY_DIR}/gamecontrollerdb.txt DESTINATION . COMPONENT ship)
+ endif()
+ 
+diff --git a/soh/soh/Extractor/Extract.cpp b/soh/soh/Extractor/Extract.cpp
+index 7819df6b1..c3d1e9eec 100644
+--- a/soh/soh/Extractor/Extract.cpp
++++ b/soh/soh/Extractor/Extract.cpp
+@@ -244,6 +244,16 @@ void Extractor::GetRoms(std::vector<std::string>& roms) {
+     // if (h != nullptr) {
+     //    CloseHandle(h);
+     //}
++#elif defined(__IOS__)
++    for (const auto& file : std::filesystem::directory_iterator(mSearchPath)) {
++        if (file.is_directory()) {
++            continue;
++        }
++        const auto extension = file.path().extension();
++        if (extension == ".n64" || extension == ".z64" || extension == ".v64") {
++            roms.push_back(file.path().string());
++        }
++    }
+ #elif unix
+     // Open the directory of the app.
+     DIR* d = opendir(mSearchPath.c_str());
+diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
+index c5e7164aa..619d55a58 100644
+--- a/soh/soh/OTRGlobals.cpp
++++ b/soh/soh/OTRGlobals.cpp
+@@ -63,6 +63,9 @@
+ 
+ #ifdef __APPLE__
+ #include <SDL_scancode.h>
++#ifdef __IOS__
++#include <SDL_video.h>
++#endif
+ #else
+ #include <SDL2/SDL_scancode.h>
+ #endif
+@@ -81,9 +84,11 @@
+ #include "soh/SohGui/ImGuiUtils.h"
+ #include "ActorDB.h"
+ #include "SaveManager.h"
++#ifndef SOH_DISABLE_NETWORKING
+ #include "soh/Network/CrowdControl/CrowdControl.h"
+ #include "soh/Network/Sail/Sail.h"
+ #include "soh/Network/Anchor/Anchor.h"
++#endif
+ #include "Enhancements/game-interactor/GameInteractor.h"
+ #include "Enhancements/randomizer/draw.h"
+ #include <libultraship/controller/controldeck/ControlDeck.h>
+@@ -129,6 +134,19 @@ const uint32_t defaultImGuiScale = 1;
+ 
+ const float imguiScaleOptionToValue[4] = { 0.75f, 1.0f, 1.5f, 2.0f };
+ 
++static uint32_t GetDefaultImGuiScale() {
++#ifdef __IOS__
++    SDL_Rect displayBounds = {};
++    if (SDL_GetDisplayUsableBounds(0, &displayBounds) == 0) {
++        const int shortestSide = displayBounds.w < displayBounds.h ? displayBounds.w : displayBounds.h;
++        if (shortestSide < 600) {
++            return 0;
++        }
++    }
++#endif
++    return defaultImGuiScale;
++}
++
+ bool SoH_HandleConfigDrop(char* filePath);
+ 
+ OTRGlobals* OTRGlobals::Instance;
+@@ -138,9 +156,11 @@ ItemTableManager* ItemTableManager::Instance;
+ GameInteractor* GameInteractor::Instance;
+ AudioCollection* AudioCollection::Instance;
+ SpeechSynthesizer* SpeechSynthesizer::Instance;
++#ifndef SOH_DISABLE_NETWORKING
+ CrowdControl* CrowdControl::Instance;
+ Sail* Sail::Instance;
+ Anchor* Anchor::Instance;
++#endif
+ 
+ extern "C" char** cameraStrings;
+ 
+@@ -330,7 +350,11 @@ OTRGlobals::OTRGlobals() {
+     }
+ 
+     previousImGuiScaleIndex = -1;
++#ifdef __IOS__
++    previousImGuiScale = 1.0f;
++#else
+     previousImGuiScale = defaultImGuiScale;
++#endif
+     ScaleImGui();
+ }
+ 
+@@ -650,6 +674,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                         continue;
+                     }
+                     case PS_FIRST: {
++#ifdef __IOS__
++                        promptStep = PS_WAIT;
++                        SohGui::RegisterPopup(
++                            "Import ROM in Files",
++                            "Open Files and copy your legally acquired .z64, .n64, or .v64 ROM into\n"
++                            "On My iPad > HarkinianPad. Return here, then choose Rescan.",
++                            "Rescan", "Exit", [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
++#else
+                         if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
+                             promptStep = PS_FILE_CHECK;
+                             continue;
+@@ -662,6 +694,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                             extractCount = 0;
+                             totalExtract = 0;
+                         });
++#endif
+                         continue;
+                     }
+                     case PS_SECOND: {
+@@ -980,7 +1013,7 @@ OTRGlobals::~OTRGlobals() {
+ }
+ 
+ void OTRGlobals::ScaleImGui() {
+-    int32_t imGuiScaleIndex = CVarGetInteger(CVAR_SETTING("ImGuiScale"), defaultImGuiScale);
++    int32_t imGuiScaleIndex = CVarGetInteger(CVAR_SETTING("ImGuiScale"), GetDefaultImGuiScale());
+     if (imGuiScaleIndex == previousImGuiScaleIndex) {
+         return;
+     }
+@@ -1560,9 +1593,11 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+ #endif
+     SpeechSynthesizer::Instance->Init();
+ 
++#ifndef SOH_DISABLE_NETWORKING
+     CrowdControl::Instance = new CrowdControl();
+     Sail::Instance = new Sail();
+     Anchor::Instance = new Anchor();
++#endif
+ 
+     OTRMessage_Init();
+     OTRAudio_Init();
+@@ -1588,6 +1623,7 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+     }
+ 
+     srand(static_cast<unsigned int>(now));
++#ifndef SOH_DISABLE_NETWORKING
+     SDLNet_Init();
+     if (CVarGetInteger(CVAR_REMOTE_CROWD_CONTROL("Enabled"), 0)) {
+         CrowdControl::Instance->Enable();
+@@ -1598,6 +1634,7 @@ extern "C" void InitOTR(int argc, char* argv[]) {
+     if (CVarGetInteger(CVAR_REMOTE_ANCHOR("Enabled"), 0)) {
+         Anchor::Instance->Enable();
+     }
++#endif
+     ShipInit::InitAll();
+     Rando::StaticData::InitHashMaps();
+     OTRGlobals::Instance->gRandoContext->AddExcludedOptions();
+@@ -1610,6 +1647,7 @@ extern "C" void SaveManager_ThreadPoolWait() {
+ extern "C" void DeinitOTR() {
+     SaveManager_ThreadPoolWait();
+     OTRAudio_Exit();
++#ifndef SOH_DISABLE_NETWORKING
+     if (CVarGetInteger(CVAR_REMOTE_CROWD_CONTROL("Enabled"), 0)) {
+         CrowdControl::Instance->Disable();
+     }
+@@ -1620,6 +1658,7 @@ extern "C" void DeinitOTR() {
+         Anchor::Instance->Disable();
+     }
+     SDLNet_Quit();
++#endif
+ 
+     // Destroying gui here because we have shared ptrs to LUS objects which output to SPDLOG which is destroyed before
+     // these shared ptrs.
+diff --git a/soh/soh/SohGui/SohGui.cpp b/soh/soh/SohGui/SohGui.cpp
+index c00083e0b..0f5d6bda6 100644
+--- a/soh/soh/SohGui/SohGui.cpp
++++ b/soh/soh/SohGui/SohGui.cpp
+@@ -22,7 +22,9 @@
+ #include "soh/Notification/Notification.h"
+ #include "soh/Enhancements/TimeDisplay/TimeDisplay.h"
+ #include "soh/Enhancements/mod_menu.h"
++#ifndef SOH_DISABLE_NETWORKING
+ #include "soh/Network/Anchor/Anchor.h"
++#endif
+ 
+ namespace SohGui {
+ 
+@@ -89,7 +91,9 @@ std::shared_ptr<PlandomizerWindow> mPlandomizerWindow;
+ std::shared_ptr<SohModalWindow> mModalWindow;
+ std::shared_ptr<Notification::Window> mNotificationWindow;
+ std::shared_ptr<TimeDisplayWindow> mTimeDisplayWindow;
++#ifndef SOH_DISABLE_NETWORKING
+ std::shared_ptr<AnchorRoomWindow> mAnchorRoomWindow;
++#endif
+ 
+ UIWidgets::Colors GetMenuThemeColor() {
+     return mSohMenu->GetMenuThemeColor();
+@@ -200,8 +204,10 @@ void SetupGuiElements() {
+     mNotificationWindow->Show();
+     mTimeDisplayWindow = std::make_shared<TimeDisplayWindow>(CVAR_WINDOW("TimeDisplayEnabled"), "Additional Timers");
+     gui->AddGuiWindow(mTimeDisplayWindow);
++#ifndef SOH_DISABLE_NETWORKING
+     mAnchorRoomWindow = std::make_shared<AnchorRoomWindow>(CVAR_WINDOW("AnchorRoom"), "Anchor Room");
+     gui->AddGuiWindow(mAnchorRoomWindow);
++#endif
+ }
+ 
+ void Destroy() {
+@@ -237,7 +243,9 @@ void Destroy() {
+     mTimeSplitWindow = nullptr;
+     mPlandomizerWindow = nullptr;
+     mTimeDisplayWindow = nullptr;
++#ifndef SOH_DISABLE_NETWORKING
+     mAnchorRoomWindow = nullptr;
++#endif
+ }
+ 
+ void RegisterPopup(std::string title, std::string message, std::string button1, std::string button2,
+diff --git a/soh/soh/SohGui/SohMenu.cpp b/soh/soh/SohGui/SohMenu.cpp
+index 584f6343a..ae30f0e84 100644
+--- a/soh/soh/SohGui/SohMenu.cpp
++++ b/soh/soh/SohGui/SohMenu.cpp
+@@ -87,7 +87,9 @@ void SohMenu::AddMenuElements() {
+     AddMenuSettings();
+     AddMenuEnhancements();
+     AddMenuRandomizer();
++#ifndef SOH_DISABLE_NETWORKING
+     AddMenuNetwork();
++#endif
+     AddMenuDevTools();
+ 
+     if (CVarGetInteger(CVAR_SETTING("Menu.SidebarSearch"), 0)) {
+diff --git a/soh/ios/Info.plist.in b/soh/ios/Info.plist.in
+new file mode 100644
+index 000000000..7de8e1c2b
+--- /dev/null
++++ b/soh/ios/Info.plist.in
+@@ -0,0 +1,63 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++    <key>CFBundleDevelopmentRegion</key>
++    <string>en</string>
++    <key>CFBundleDisplayName</key>
++    <string>HarkinianPad</string>
++    <key>CFBundleExecutable</key>
++    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
++    <key>CFBundleIdentifier</key>
++    <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
++    <key>CFBundleInfoDictionaryVersion</key>
++    <string>6.0</string>
++    <key>CFBundleName</key>
++    <string>HarkinianPad</string>
++    <key>CFBundlePackageType</key>
++    <string>APPL</string>
++    <key>CFBundleShortVersionString</key>
++    <string>@CMAKE_PROJECT_VERSION@</string>
++    <key>CFBundleVersion</key>
++    <string>@CMAKE_PROJECT_VERSION@</string>
++    <key>GCSupportedGameControllers</key>
++    <array>
++        <dict>
++            <key>ProfileName</key>
++            <string>ExtendedGamepad</string>
++        </dict>
++    </array>
++    <key>GCRequiresControllerUserInteraction</key>
++    <dict>
++        <key>iOS</key>
++        <true/>
++    </dict>
++    <key>GCSupportsControllerUserInteraction</key>
++    <true/>
++    <key>LSApplicationCategoryType</key>
++    <string>public.app-category.games</string>
++    <key>LSSupportsOpeningDocumentsInPlace</key>
++    <true/>
++    <key>UIFileSharingEnabled</key>
++    <true/>
++    <key>UIRequiredDeviceCapabilities</key>
++    <array>
++        <string>arm64</string>
++        <string>metal</string>
++    </array>
++    <key>UIRequiresFullScreen</key>
++    <true/>
++    <key>UIStatusBarHidden</key>
++    <true/>
++    <key>UISupportedInterfaceOrientations</key>
++    <array>
++        <string>UIInterfaceOrientationLandscapeLeft</string>
++        <string>UIInterfaceOrientationLandscapeRight</string>
++    </array>
++    <key>UISupportedInterfaceOrientations~ipad</key>
++    <array>
++        <string>UIInterfaceOrientationLandscapeLeft</string>
++        <string>UIInterfaceOrientationLandscapeRight</string>
++    </array>
++</dict>
++</plist>
+diff --git a/soh/src/code/main.c b/soh/src/code/main.c
+index 98c632665..05922fdf1 100644
+--- a/soh/src/code/main.c
++++ b/soh/src/code/main.c
+@@ -43,8 +43,9 @@ void Main_LogSystemHeap(void) {
+     osSyncPrintf(VT_RST);
+ }
+ 
+-#ifdef _WIN32
++#if defined(_WIN32) || defined(__IOS__)
+ int SDL_main(int argc, char* argv[]) {
++#ifdef _WIN32
+     AllocConsole();
+     (void)freopen("CONIN$", "r", stdin);
+     (void)freopen("CONOUT$", "w", stdout);
+@@ -54,8 +55,9 @@ int SDL_main(int argc, char* argv[]) {
+ #endif
+     // Allow non-ascii characters for Windows
+     setlocale(LC_ALL, ".UTF8");
++#endif
+ 
+-#else //_WIN32
++#else
+ int main(int argc, char* argv[]) {
+ #endif
+     GameConsole_Init();
+diff --git a/soh/src/code/graph.c b/soh/src/code/graph.c
+index 1b7922592..fd66f6d61 100644
+--- a/soh/src/code/graph.c
++++ b/soh/src/code/graph.c
+@@ -518,6 +518,11 @@ static void RunFrame() {
+ 
+ void Graph_ThreadEntry(void* arg0) {
+     while (WindowIsRunning()) {
++#ifdef __IOS__
++        if (!WindowIsFrameReady()) {
++            continue;
++        }
++#endif
+         RunFrame();
+     }
+ }
+diff --git a/soh/soh/Enhancements/FileSelectEnhancements.cpp b/soh/soh/Enhancements/FileSelectEnhancements.cpp
+index 7f26d02c1..9071ec217 100644
+--- a/soh/soh/Enhancements/FileSelectEnhancements.cpp
++++ b/soh/soh/Enhancements/FileSelectEnhancements.cpp
+@@ -42,21 +42,21 @@ std::array<std::string, LANGUAGE_MAX> RandomizerSettingsMenuText[RSM_MAX] = {
+     },
+     { // English
+       "No randomizer seed loaded.\nPlease generate one first"
+-#if defined(__WIIU__) || defined(__SWITCH__)
++#if defined(__WIIU__) || defined(__SWITCH__) || defined(__IOS__)
+       ".",
+ #else
+       ",\nor drop a spoiler log on the game window.",
+ #endif
+       // German
+       "Kein Randomizer Seed gefunden.\nBitte generiere zuerst einen"
+-#if defined(__WIIU__) || defined(__SWITCH__)
++#if defined(__WIIU__) || defined(__SWITCH__) || defined(__IOS__)
+       ".",
+ #else
+       ",\noder ziehe ein Spoiler Log\nauf das Spielfenster.",
+ #endif
+       // French
+       "Aucune Seed de Randomizer actuellement disponible.\nGénérez-en une dans les \"Randomizer Settings\""
+-#if (defined(__WIIU__) || defined(__SWITCH__))
++#if defined(__WIIU__) || defined(__SWITCH__) || defined(__IOS__)
+       "."
+ #else
+       "\nou glissez un spoilerlog sur la fenêtre du jeu."
+diff --git a/soh/soh/Enhancements/bootcommands.c b/soh/soh/Enhancements/bootcommands.c
+index 3cda26a82..e67aa4101 100644
+--- a/soh/soh/Enhancements/bootcommands.c
++++ b/soh/soh/Enhancements/bootcommands.c
+@@ -12,5 +12,7 @@ void BootCommands_Init() {
+     CVarClear(CVAR_GENERAL("BetterDebugWarpScreenMQModeScene"));
+ #if defined(__SWITCH__) || defined(__WIIU__)
+     CVarRegisterInteger(CVAR_IMGUI_CONTROLLER_NAV, 1); // always enable controller nav on switch/wii u
++#elif defined(__IOS__)
++    CVarSetInteger(CVAR_IMGUI_CONTROLLER_NAV, 1); // controller-first menus on iOS
+ #endif
+ }
+diff --git a/soh/soh/SohGui/Menu.cpp b/soh/soh/SohGui/Menu.cpp
+index 42227d7f9..b9fe8687e 100644
+--- a/soh/soh/SohGui/Menu.cpp
++++ b/soh/soh/SohGui/Menu.cpp
+@@ -793,7 +793,7 @@ void Menu::DrawElement() {
+     options2.color = UIWidgets::Colors::Red;
+     options2.size = UIWidgets::Sizes::Inline;
+     options2.tooltip = "Reset"
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+                        " (Command-R)"
+ #elif !defined(__SWITCH__) && !defined(__WIIU__)
+                        " (Ctrl+R)"
+diff --git a/soh/soh/SohGui/ResolutionEditor.cpp b/soh/soh/SohGui/ResolutionEditor.cpp
+index fc7323e8b..5249a1634 100644
+--- a/soh/soh/SohGui/ResolutionEditor.cpp
++++ b/soh/soh/SohGui/ResolutionEditor.cpp
+@@ -232,7 +232,7 @@ void ResolutionCustomWidget(WidgetInfo& info) {
+     // Collapsible panel for additional settings
+     UIWidgets::PushStyleHeader(THEME_COLOR);
+     if (ImGui::CollapsingHeader("Additional Settings")) {
+-#if defined(__SWITCH__) || defined(__WIIU__)
++#if defined(__SWITCH__) || defined(__WIIU__) || defined(__IOS__)
+         // Disable aspect correction, stretching the framebuffer to fill the viewport.
+         // This option is only really needed on systems limited to 16:9 TV resolutions, such as consoles.
+         // The associated cvar is still functional on PC platforms if you want to use it though.
+diff --git a/soh/soh/SohGui/SohGui.cpp b/soh/soh/SohGui/SohGui.cpp
+index 0f5d6bda6..119795dd3 100644
+--- a/soh/soh/SohGui/SohGui.cpp
++++ b/soh/soh/SohGui/SohGui.cpp
+@@ -36,7 +36,7 @@ static const inline std::vector<std::pair<const char*, const char*>> audioBacken
+ #if defined(__linux)
+     { "pulse", "PulseAudio" },
+ #endif
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     { "coreaudio", "Core Audio" },
+ #endif
+     { "sdl", "SDL Audio" }
+diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
+index 643167726..786c17591 100644
+--- a/soh/soh/SohGui/SohMenuSettings.cpp
++++ b/soh/soh/SohGui/SohMenuSettings.cpp
+@@ -137,7 +137,7 @@ void SohMenu::AddMenuSettings() {
+                      .Tooltip("Changes the Theme of the Menu Widgets.")
+                      .ComboMap(menuThemeOptions)
+                      .DefaultIndex(Colors::LightBlue));
+-#if not defined(__SWITCH__) and not defined(__WIIU__)
++#if !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__IOS__)
+     AddWidget(path, "Menu Controller Navigation", WIDGET_CVAR_CHECKBOX)
+         .CVar(CVAR_IMGUI_CONTROLLER_NAV)
+         .RaceDisable(false)

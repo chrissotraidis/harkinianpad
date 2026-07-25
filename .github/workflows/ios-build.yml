@@ -1,0 +1,74 @@
+name: ios-build
+
+# The iOS build feedback loop (plan work item 11, pulled forward).
+#
+# Two jobs:
+#   lus-ios  — configure + build libultraship for iOS. This mirrors upstream's
+#              own iOS CI (libultraship .github/workflows/build-validation.yml)
+#              and is REQUIRED: if it goes red, the engine layer regressed.
+#   soh-ios  — configure the full Ship of Harkinian app for iOS. EXPECTED TO
+#              FAIL until plan work items 1-3 land (no iOS arm in SoH's CMake,
+#              CoreAudio gating, macOS-fullscreen link gap), so it is
+#              continue-on-error. Flip it to required once it first passes —
+#              that moment is milestone 1.
+#
+# Asset posture: no ROMs or generated archives are involved anywhere in this
+# workflow. Building requires none (soh.o2r is generated from the port's own
+# non-Nintendo assets); never add steps that download or cache such files.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEPLOYMENT_TARGET: "14.0" # matches upstream LUS CI; real floor TBD (plan open question Q10)
+
+jobs:
+  lus-ios:
+    name: libultraship (iOS, Xcode) — required
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch pinned source stack
+        run: scripts/clone-sources.sh
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build-ios-lus/_deps
+          key: lus-ios-deps-${{ runner.os }}-${{ hashFiles('sources/Shipwright/libultraship/cmake/dependencies/*.cmake') }}
+
+      - name: Configure (LUS, iOS)
+        run: scripts/configure-ios.sh
+
+      - name: Build (LUS, iOS)
+        run: |
+          cmake --build build-ios-lus --config Release -- \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+
+  soh-ios:
+    name: full SoH app (iOS, Xcode) — expected to fail until WI-1..3
+    runs-on: macos-14
+    timeout-minutes: 90
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch pinned source stack
+        run: scripts/clone-sources.sh
+
+      - name: Configure (SoH app, iOS)
+        run: scripts/configure-ios.sh --soh
+
+      - name: Build (SoH app, iOS)
+        run: |
+          cmake --build build-ios-soh --config Release -- \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO

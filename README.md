@@ -1,9 +1,9 @@
 # HarkinianPad
 
 <p align="center">
-  <strong>Ship of Harkinian, fitted for iPad.</strong><br>
-  A native iOS and iPadOS build with Metal rendering, on-device setup,
-  touch controls, and physical-controller support.
+  <strong>Ocarina of Time on iPad, through Ship of Harkinian.</strong><br>
+  Native Metal rendering, on-device setup, touch controls, and
+  physical-controller support—with a clear path for a separate Majora's Mask port.
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@ through Metal, discovers a user-provided ROM through Files, performs extraction
 inside the app container, and offers a grip-first N64 touch layout alongside
 iOS-compatible game controllers.
 
-This repository contains the reproducible iOS integration—not the game.
+This repository contains the reproducible iOS integration—not either game.
 HarkinianPad never ships a ROM or the ROM-derived archive needed to play.
 
 > **Current status:** the full app builds for arm64 iPhoneOS and reaches the
@@ -33,6 +33,37 @@ HarkinianPad never ships a ROM or the ROM-derived archive needed to play.
 > Files import still require a real-iPad replay. The
 > [proof ledger](docs/remaining-work.md) separates completed evidence from open
 > hardware gates.
+
+## Choose your game
+
+HarkinianPad belongs to a family of Harbour Masters source ports, but the two
+Zelda games use different engines and different game data. This checkout makes
+that boundary explicit:
+
+| Game | Upstream engine | HarkinianPad status |
+|---|---|---|
+| **The Legend of Zelda: Ocarina of Time** | [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) | **Supported now.** This repository builds the iOS/iPadOS app and imports a supported Ocarina of Time ROM on first launch. |
+| **The Legend of Zelda: Majora's Mask** | [2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian) | **Separate port required.** The mobile integration can be adapted to that engine, but this app does not currently accept or run a Majora's Mask ROM. |
+
+<details>
+<summary><strong>I have an Ocarina of Time ROM—what do I do?</strong></summary>
+
+Build HarkinianPad, launch it once, then import your legally acquired supported
+ROM through the Files-visible HarkinianPad folder. Start with the
+[Simulator quick start](#build-for-simulator) or the
+[real-iPad guide](docs/BUILDING.md).
+</details>
+
+<details>
+<summary><strong>I have a Majora's Mask ROM—can I put it in HarkinianPad?</strong></summary>
+
+Not in the current app. Majora's Mask is handled by the separate
+[2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian)
+codebase, which has its own supported-ROM list and archive format. Bringing it
+to iPad should reuse the small HarkinianPad mobile layer where practical, while
+remaining a separate build target rather than pretending the two ROMs are
+interchangeable.
+</details>
 
 ## Why HarkinianPad exists
 
@@ -112,12 +143,14 @@ maintained in [`docs/remaining-work.md`](docs/remaining-work.md).
 ```mermaid
 flowchart LR
     A["HarkinianPad scripts"] --> B["Pinned upstream sources"]
-    B --> C["Maintained iOS patches"]
-    C --> D["Xcode iOS app"]
+    B --> C["Shipwright (Ocarina of Time)"]
+    C --> D["Maintained iOS patches"]
+    D --> I["Xcode iOS app"]
     E["Your legally acquired ROM"] --> F["Files-visible app folder"]
-    D --> G["On-device extraction"]
+    I --> G["On-device extraction"]
     F --> G
     G --> H["Local oot.o2r + gameplay"]
+    J["Majora's Mask ROM"] -.-> K["Separate 2 Ship 2 Harkinian target required"]
 ```
 
 The compile does not read your ROM. `scripts/build-ios.sh` fetches and verifies
@@ -231,6 +264,16 @@ ROM is used locally to generate the data archive the source port requires.
 No. It contains no ROM and no playable ROM-derived archive. You must provide
 your own legally acquired supported copy. Do not open an issue asking for game
 data or download links.
+</details>
+
+<details>
+<summary><strong>Does HarkinianPad run Majora's Mask?</strong></summary>
+
+Not today. The current app is built from Ship of Harkinian and accepts supported
+Ocarina of Time data. Majora's Mask uses
+[2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian);
+support requires a separate integration and build target. A Majora's Mask ROM
+placed in `ref/` or the app's Files folder will not make this binary compatible.
 </details>
 
 <details>

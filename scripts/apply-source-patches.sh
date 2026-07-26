@@ -50,3 +50,6 @@ else
     apply_patch "$SHIPWRIGHT" "$ROOT/patches/shipwright-ios.patch"
     apply_patch "$SHIPWRIGHT" "$ROOT/patches/shipwright-ios-first-run.patch"
 fi
+
+apply_patch "$SHIPWRIGHT" \
+    "$ROOT/patches/shipwright-ios-touch-controls.patch"

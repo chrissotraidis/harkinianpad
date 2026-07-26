@@ -12,10 +12,10 @@ index 6e57d8c3d..37602af3a 100644
  # Create source groups that match the real file directory paths
 diff --git a/soh/ios/HarkinianPadTouchControls.h b/soh/ios/HarkinianPadTouchControls.h
 new file mode 100644
-index 000000000..3d83ed847
+index 000000000..30ea1d3e5
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.h
-@@ -0,0 +1,12 @@
+@@ -0,0 +1,13 @@
 +#pragma once
 +
 +#ifdef __cplusplus
@@ -24,18 +24,20 @@ index 000000000..3d83ed847
 +
 +int HarkinianPad_TouchControlsAvailable(void);
 +void HarkinianPad_SetTouchControlsEnabled(int enabled);
++void HarkinianPad_SetTouchControlsMenuVisible(int visible);
 +
 +#ifdef __cplusplus
 +}
 +#endif
 diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
 new file mode 100644
-index 000000000..b9e784a26
+index 000000000..684920368
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.mm
-@@ -0,0 +1,454 @@
+@@ -0,0 +1,497 @@
 +#import <UIKit/UIKit.h>
 +
++#include <atomic>
 +#include <SDL.h>
 +
 +#include "HarkinianPadTouchControls.h"
@@ -60,10 +62,14 @@ index 000000000..b9e784a26
 +@property(nonatomic) SDL_Scancode scancode;
 +@property(nonatomic) BOOL inputPressed;
 +@property(nonatomic) BOOL usesPillShape;
++@property(nonatomic, strong) UIColor* idleColor;
++@property(nonatomic, strong) UIColor* pressedColor;
 +
 +- (instancetype)initWithLabel:(NSString*)label
 +                     scancode:(SDL_Scancode)scancode
 +                         pill:(BOOL)pill;
++- (void)applyIdleColor:(UIColor*)idleColor
++          pressedColor:(UIColor*)pressedColor;
 +- (void)cancelInput;
 +
 +@end
@@ -78,7 +84,9 @@ index 000000000..b9e784a26
 +        self.scancode = scancode;
 +        self.usesPillShape = pill;
 +        self.multipleTouchEnabled = YES;
-+        self.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.38];
++        self.idleColor = [UIColor colorWithWhite:0.04 alpha:0.38];
++        self.pressedColor = [UIColor colorWithWhite:0.72 alpha:0.48];
++        self.backgroundColor = self.idleColor;
 +        self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.58].CGColor;
 +        self.layer.borderWidth = 2.0;
 +        [self setTitle:label forState:UIControlStateNormal];
@@ -98,6 +106,13 @@ index 000000000..b9e784a26
 +    return self;
 +}
 +
++- (void)applyIdleColor:(UIColor*)idleColor
++          pressedColor:(UIColor*)pressedColor {
++    self.idleColor = idleColor;
++    self.pressedColor = pressedColor;
++    self.backgroundColor = self.inputPressed ? pressedColor : idleColor;
++}
++
 +- (void)layoutSubviews {
 +    [super layoutSubviews];
 +    self.layer.cornerRadius =
@@ -110,7 +125,7 @@ index 000000000..b9e784a26
 +        return;
 +    }
 +    self.inputPressed = YES;
-+    self.backgroundColor = [UIColor colorWithWhite:0.72 alpha:0.48];
++    self.backgroundColor = self.pressedColor;
 +    HarkinianPad_PushKey(self.scancode, YES);
 +}
 +
@@ -119,7 +134,7 @@ index 000000000..b9e784a26
 +        return;
 +    }
 +    self.inputPressed = NO;
-+    self.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.38];
++    self.backgroundColor = self.idleColor;
 +    HarkinianPad_PushKey(self.scancode, NO);
 +}
 +
@@ -293,6 +308,24 @@ index 000000000..b9e784a26
 +        self.cRight =
 +            [[HarkinianPadTouchButton alloc] initWithLabel:@"▶" scancode:SDL_SCANCODE_RIGHT pill:NO];
 +
++        [self.buttonA
++            applyIdleColor:[UIColor colorWithRed:0.08 green:0.35 blue:0.88 alpha:0.58]
++              pressedColor:[UIColor colorWithRed:0.14 green:0.48 blue:1.00 alpha:0.88]];
++        [self.buttonB
++            applyIdleColor:[UIColor colorWithRed:0.05 green:0.55 blue:0.24 alpha:0.58]
++              pressedColor:[UIColor colorWithRed:0.10 green:0.76 blue:0.34 alpha:0.88]];
++        [self.buttonStart
++            applyIdleColor:[UIColor colorWithRed:0.68 green:0.12 blue:0.16 alpha:0.52]
++              pressedColor:[UIColor colorWithRed:0.94 green:0.22 blue:0.26 alpha:0.88]];
++        UIColor* cIdle =
++            [UIColor colorWithRed:0.95 green:0.67 blue:0.12 alpha:0.48];
++        UIColor* cPressed =
++            [UIColor colorWithRed:1.00 green:0.78 blue:0.20 alpha:0.86];
++        for (HarkinianPadTouchButton* button in
++             @[ self.cUp, self.cDown, self.cLeft, self.cRight ]) {
++            [button applyIdleColor:cIdle pressedColor:cPressed];
++        }
++
 +        self.buttonStart.accessibilityLabel = @"Start";
 +        self.buttonMenu.accessibilityLabel = @"Menu";
 +        self.buttonZLeft.accessibilityLabel = @"Z left";
@@ -338,11 +371,11 @@ index 000000000..b9e784a26
 +    CGFloat railWidth = MIN(250.0 * scale, usableWidth * 0.22);
 +    CGFloat leftCenter = safe.left + railWidth * 0.5;
 +    CGFloat rightCenter = width - safe.right - railWidth * 0.5;
-+    CGFloat gripTopY = MAX(safe.top + edge, height * 0.43);
-+    CGFloat middleCenterY = height * 0.62;
-+    CGFloat lowCenterY = height * 0.85;
++    CGFloat gripTopY = MAX(safe.top + edge, height * 0.38);
++    CGFloat middleCenterY = height * 0.60;
++    CGFloat lowCenterY = height * 0.86;
 +
-+    CGFloat stickSize = 160.0 * scale;
++    CGFloat stickSize = 150.0 * scale;
 +    self.controlStick.frame =
 +        CGRectMake(leftCenter - stickSize * 0.5, lowCenterY - stickSize * 0.5,
 +                   stickSize, stickSize);
@@ -356,8 +389,8 @@ index 000000000..b9e784a26
 +        CGRectMake(CGRectGetMaxX(self.buttonL.frame) + 10.0 * scale, leftRowY,
 +                   pillHeight, pillHeight);
 +
-+    CGFloat dSize = 64.0 * scale;
-+    CGFloat dRadius = 58.0 * scale;
++    CGFloat dSize = 58.0 * scale;
++    CGFloat dRadius = 54.0 * scale;
 +    CGPoint dCenter = CGPointMake(leftCenter, middleCenterY);
 +    self.dUp.frame =
 +        CGRectMake(dCenter.x - dSize * 0.5,
@@ -372,7 +405,7 @@ index 000000000..b9e784a26
 +        CGRectMake(dCenter.x + dRadius - dSize * 0.5,
 +                   dCenter.y - dSize * 0.5, dSize, dSize);
 +
-+    CGFloat faceSize = 76.0 * scale;
++    CGFloat faceSize = 72.0 * scale;
 +    CGFloat faceCenterY = middleCenterY;
 +    CGFloat faceX = rightCenter - faceSize * 0.5;
 +    self.buttonA.frame =
@@ -384,8 +417,8 @@ index 000000000..b9e784a26
 +        CGRectMake(faceX, faceCenterY - faceSize - 12.0 * scale,
 +                   faceSize, faceSize);
 +
-+    CGFloat cSize = 64.0 * scale;
-+    CGFloat cRadius = 58.0 * scale;
++    CGFloat cSize = 54.0 * scale;
++    CGFloat cRadius = 50.0 * scale;
 +    CGPoint cCenter = CGPointMake(rightCenter, lowCenterY);
 +    self.cUp.frame =
 +        CGRectMake(cCenter.x - cSize * 0.5,
@@ -400,7 +433,7 @@ index 000000000..b9e784a26
 +        CGRectMake(cCenter.x + cRadius - cSize * 0.5,
 +                   cCenter.y - cSize * 0.5, cSize, cSize);
 +
-+    CGFloat menuSize = 58.0 * scale;
++    CGFloat menuSize = 50.0 * scale;
 +    self.buttonMenu.frame =
 +        CGRectMake(width - right - menuSize, height * 0.72 - menuSize * 0.5,
 +                   menuSize, menuSize);
@@ -434,6 +467,7 @@ index 000000000..b9e784a26
 +
 +static HarkinianPadTouchOverlay* sTouchOverlay;
 +static BOOL sTouchControlsDesired;
++static std::atomic_bool sTouchControlsMenuVisible(false);
 +
 +static UIWindow* HarkinianPad_ActiveWindow(void) {
 +    for (UIScene* scene in UIApplication.sharedApplication.connectedScenes) {
@@ -450,7 +484,7 @@ index 000000000..b9e784a26
 +}
 +
 +static void HarkinianPad_ApplyTouchControlsState(void) {
-+    if (!sTouchControlsDesired) {
++    if (!sTouchControlsDesired || sTouchControlsMenuVisible.load()) {
 +        [sTouchOverlay cancelAllInputs];
 +        [sTouchOverlay removeFromSuperview];
 +        sTouchOverlay = nil;
@@ -485,6 +519,16 @@ index 000000000..b9e784a26
 +void HarkinianPad_SetTouchControlsEnabled(int enabled) {
 +    dispatch_async(dispatch_get_main_queue(), ^{
 +        sTouchControlsDesired = enabled != 0;
++        HarkinianPad_ApplyTouchControlsState();
++    });
++}
++
++void HarkinianPad_SetTouchControlsMenuVisible(int visible) {
++    const bool menuVisible = visible != 0;
++    if (sTouchControlsMenuVisible.exchange(menuVisible) == menuVisible) {
++        return;
++    }
++    dispatch_async(dispatch_get_main_queue(), ^{
 +        HarkinianPad_ApplyTouchControlsState();
 +    });
 +}

@@ -20,8 +20,8 @@ Install the host tools and libraries used to generate Shipwright's ROM-free
 port archive:
 
 ```sh
-brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng \
-  libogg libvorbis opus opusfile
+brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng libzip \
+  tinyxml2 libogg libvorbis opus opusfile
 ```
 
 ## Clean-machine build

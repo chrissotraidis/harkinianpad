@@ -52,4 +52,13 @@ else
 fi
 
 apply_patch "$SHIPWRIGHT" \
+    "$ROOT/patches/shipwright-ios-app-icon.patch"
+apply_patch "$SHIPWRIGHT" \
     "$ROOT/patches/shipwright-ios-touch-controls.patch"
+
+APP_ICON_SOURCE="$ROOT/assets/AppIcon.appiconset"
+APP_ICON_DESTINATION="$SHIPWRIGHT/soh/ios/Assets.xcassets/AppIcon.appiconset"
+mkdir -p "$APP_ICON_DESTINATION"
+cp "$APP_ICON_SOURCE/Contents.json" "$APP_ICON_DESTINATION/Contents.json"
+cp "$APP_ICON_SOURCE/AppIcon.png" "$APP_ICON_DESTINATION/AppIcon.png"
+echo "Installed HarkinianPad app icon assets"

@@ -2,15 +2,15 @@
 
 <p align="center">
   <strong>Ocarina of Time on iPad, through Ship of Harkinian.</strong><br>
-  Native Metal rendering, on-device setup, touch controls, and
-  physical-controller support—with a clear path for a separate Majora's Mask port.
+  Native Metal rendering, on-device setup, touch, keyboard, mouse, and
+  controller input—with a clear path for a separate Majora's Mask port.
 </p>
 
 <p align="center">
   <a href="docs/remaining-work.md"><img alt="arm64 iOS build verified" src="https://img.shields.io/badge/build-arm64%20iOS-30D158"></a>
   <img alt="iOS 14+" src="https://img.shields.io/badge/iOS-14%2B-0A84FF?logo=apple">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
-  <img alt="Touch and controller input" src="https://img.shields.io/badge/input-touch%20%2B%20controller-30D158">
+  <img alt="Touch, keyboard, mouse, and controller input" src="https://img.shields.io/badge/input-touch%20%2B%20keyboard%20%2B%20controller-30D158">
   <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF9F0A">
 </p>
 
@@ -21,7 +21,7 @@ HarkinianPad brings the complete
 to Apple mobile devices. It runs through SDL's UIKit entry point, renders
 through Metal, discovers a user-provided ROM through Files, performs extraction
 inside the app container, and offers a grip-first N64 touch layout alongside
-iOS-compatible game controllers.
+keyboard, trackpad/mouse, and iOS-compatible game-controller input.
 
 This repository contains the reproducible iOS integration—not either game.
 HarkinianPad never ships a ROM or the ROM-derived archive needed to play.
@@ -218,7 +218,8 @@ ROMs, ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data inside
 2. In Files, move your supported ROM to **On My iPad → HarkinianPad**.
 3. Return to HarkinianPad and choose **Rescan**.
 4. Leave the app open while it creates the local archive.
-5. Press the on-screen **Start** button, or use a connected controller.
+5. Press the on-screen **Start** button, press **Space** or **Return** on a
+   keyboard, or use a connected controller.
 
 The original ROM and generated `oot.o2r` remain local. They are ignored by
 Git, excluded from CI, and rejected by the package audit.
@@ -226,12 +227,17 @@ Git, excluded from CI, and rejected by the package audit.
 ## Controls
 
 The overlay is designed around the lower half of a landscape iPad so both
-hands can remain on the side edges:
+hands can remain on the side edges. Its shoulder, face/D-pad, and stick/C
+groups occupy three distinct bands rather than competing for the same thumb
+space:
 
 - **Left:** L/Z shoulder row, separate D-pad, and a low eight-way control stick.
 - **Right:** Start/R shoulder row, A/B/Z cluster, Menu, and a separate low
   C-button diamond.
-- **Toggle:** open **☰ → Settings → Controls → Touch Controls**.
+- **Menus:** opening **☰** hides the gameplay controls so settings remain
+  unobstructed; closing the menu restores them automatically.
+- **Toggle:** use **Settings → Controls → Touch Controls** to disable or
+  re-enable the overlay entirely.
 
 | Touch control | Existing Shipwright binding |
 |---|---|
@@ -239,7 +245,7 @@ hands can remain on the side edges:
 | D-pad | T/G/F/H |
 | A / B | X / C |
 | L / Z / R | E / Z / R |
-| Start | Space |
+| Start | Space or Return |
 | C buttons | Arrow keys |
 | Menu | Escape |
 
@@ -247,6 +253,20 @@ The touch stick is intentionally a simple eight-way testing control. A
 physical controller remains the reference path for analog precision. The full
 layout and acceptance contract are in
 [`docs/touch-controls-design.md`](docs/touch-controls-design.md).
+
+Keyboard, trackpad/mouse, and controller input use Shipwright's native input
+system:
+
+- **Keyboard:** W/A/S/D moves, X is A, C is B, Z is Z, Space or Return is
+  Start, arrow keys are C buttons, and Escape opens the menu.
+- **Trackpad or mouse:** primary click is A, secondary click is B, and middle
+  click is Z. Pair it with the keyboard for movement.
+- **Controller:** the left stick, face buttons, triggers/shoulders, Start,
+  D-pad, and right stick retain Shipwright's SDL game-controller mappings.
+
+These defaults apply automatically to a clean configuration. On an existing
+installation, choose **Set Defaults** for Keyboard or Mouse in
+**Settings → Controls** to add the new defaults without rebuilding.
 
 ## Frequently asked questions
 
@@ -310,11 +330,11 @@ when the overlay is removed.
 </details>
 
 <details>
-<summary><strong>Why does Enter do nothing at the title screen?</strong></summary>
+<summary><strong>Do Space and Return both work as Start?</strong></summary>
 
-Start uses Shipwright's existing **Space** binding. The built-in touch layout
-exposes a dedicated Start button, so no keyboard is required for basic
-Simulator navigation.
+Yes. Both are included in the current default keyboard mapping. If the app
+already has an older controller configuration, choose **Set Defaults** for
+Keyboard under **Settings → Controls** once.
 </details>
 
 <details>

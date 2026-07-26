@@ -443,15 +443,16 @@ index eaea3cd7..5bc888a9 100644
              const float textWidth = GetStringWidth(overlay.Value.c_str());
              const float textOffset = 40.0f;
 diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
-index 1cf50fcc..6b06c69f 100644
+index 1cf50fcc..e3be55cb 100644
 --- a/src/ship/window/gui/Gui.cpp
 +++ b/src/ship/window/gui/Gui.cpp
-@@ -7,6 +7,10 @@
+@@ -7,6 +7,11 @@
  #include <string>
  #include <vector>
  
 +#ifdef __IOS__
 +#include <SDL2/SDL.h>
++extern "C" void HarkinianPad_SetTouchControlsMenuVisible(int visible);
 +#endif
 +
  #include "ship/config/Config.h"
@@ -478,3 +479,66 @@ index 1cf50fcc..6b06c69f 100644
  #endif
  
      mImGuiIniPath = Context::GetPathRelativeToAppDirectory("imgui.ini");
+@@ -239,6 +254,10 @@ void Gui::DrawMenu() {
+         GetMenu()->Draw();
+     }
+ 
++#ifdef __IOS__
++    HarkinianPad_SetTouchControlsMenuVisible(GetMenuOrMenubarVisible());
++#endif
++
+     for (auto& windowIter : mGuiWindows) {
+         windowIter.second->Update();
+         windowIter.second->Draw();
+diff --git a/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp b/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp
+index c431c346..1bce6004 100644
+--- a/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp
++++ b/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp
+@@ -51,7 +51,7 @@ void ControllerDefaultMappings::SetDefaultKeyboardKeyToButtonMappings(
+         { BTN_L, { Ship::KbScancode::LUS_KB_E } },
+         { BTN_R, { Ship::KbScancode::LUS_KB_R } },
+         { BTN_Z, { Ship::KbScancode::LUS_KB_Z } },
+-        { BTN_START, { Ship::KbScancode::LUS_KB_SPACE } },
++        { BTN_START, { Ship::KbScancode::LUS_KB_SPACE, Ship::KbScancode::LUS_KB_ENTER } },
+         { BTN_CUP, { Ship::KbScancode::LUS_KB_ARROWKEY_UP } },
+         { BTN_CDOWN, { Ship::KbScancode::LUS_KB_ARROWKEY_DOWN } },
+         { BTN_CLEFT, { Ship::KbScancode::LUS_KB_ARROWKEY_LEFT } },
+diff --git a/src/ship/controller/controldevice/controller/ControllerButton.cpp b/src/ship/controller/controldevice/controller/ControllerButton.cpp
+index eced487d..5a55d5d8 100644
+--- a/src/ship/controller/controldevice/controller/ControllerButton.cpp
++++ b/src/ship/controller/controldevice/controller/ControllerButton.cpp
+@@ -5,6 +5,10 @@
+ #include "ship/controller/controldevice/controller/mapping/keyboard/KeyboardKeyToButtonMapping.h"
+ #include "ship/controller/controldevice/controller/mapping/mouse/MouseButtonToButtonMapping.h"
+ 
++#ifdef __IOS__
++#include "libultraship/libultra/controller.h"
++#endif
++
+ #include "ship/config/ConsoleVariable.h"
+ #include "ship/utils/StringHelper.h"
+ #include <sstream>
+@@ -248,6 +252,23 @@ void ControllerButton::AddDefaultMappings(PhysicalDeviceType physicalDeviceType)
+         }
+     }
+ 
++#ifdef __IOS__
++    if (physicalDeviceType == PhysicalDeviceType::Mouse) {
++        MouseBtn mouseButton = LUS_MOUSE_BTN_UNKNOWN;
++        if (mBitmask == BTN_A) {
++            mouseButton = LUS_MOUSE_BTN_LEFT;
++        } else if (mBitmask == BTN_B) {
++            mouseButton = LUS_MOUSE_BTN_RIGHT;
++        } else if (mBitmask == BTN_Z) {
++            mouseButton = LUS_MOUSE_BTN_MIDDLE;
++        }
++        if (mouseButton != LUS_MOUSE_BTN_UNKNOWN) {
++            AddButtonMapping(
++                std::make_shared<MouseButtonToButtonMapping>(mPortIndex, mBitmask, mouseButton));
++        }
++    }
++#endif
++
+     for (auto [id, mapping] : mButtonMappings) {
+         mapping->SaveToConfig();
+     }

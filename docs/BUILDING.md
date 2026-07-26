@@ -122,7 +122,8 @@ L/Z, a separate four-button D-pad, and a low control stick. The right rail has
 Start/R, an A/B/Z cluster, a menu button, and a separate low four-button
 C diamond. The duplicated Z control keeps the trigger reachable from either
 grip. Empty overlay space passes through to the game and menus. Open the menu
-with **☰**, then turn the overlay off or back on under
+with **☰**; the gameplay overlay disappears while the menu is visible and
+returns when the menu closes. Turn it off or back on entirely under
 **Settings > Controls > Touch Controls**.
 
 The basic touch bridge reuses the existing bindings:
@@ -133,7 +134,7 @@ The basic touch bridge reuses the existing bindings:
 | D-pad | T/G/F/H |
 | A / B | X / C |
 | L / Z (either) / R | E / Z / R |
-| Start | Space |
+| Start | Space or Return |
 | C buttons | Arrow keys |
 | Menu | Escape |
 
@@ -144,6 +145,21 @@ in Settings before launching the app. For a Simulator-only check, connect the
 controller to the Mac and choose **I/O > Input > Send Game Controller to
 Device** in Simulator.
 
+For keyboard and pointing-device testing, the default mappings are:
+
+| Device input | N64 action |
+|---|---|
+| W/A/S/D | Control stick |
+| X / C / Z | A / B / Z |
+| Space or Return | Start |
+| Arrow keys | C buttons |
+| Primary / secondary / middle click | A / B / Z |
+
+On an installation that already wrote an older controller configuration,
+expand Keyboard or Mouse under **Settings > Controls** and choose
+**Set Defaults** once. Trackpad/mouse input complements the keyboard; it does
+not replace movement input.
+
 At the title screen, test the touch layout and then the controller separately.
 Confirm that:
 
@@ -152,11 +168,13 @@ Confirm that:
    input viewer.
 2. Disabling **Touch Controls** removes the overlay immediately; enabling it
    restores the overlay without restarting.
-3. A save can be created or selected and Link can be controlled in active
+3. Opening the menu hides every gameplay control, and closing it restores the
+   overlay only when **Touch Controls** is enabled.
+4. A save can be created or selected and Link can be controlled in active
    gameplay for at least ten minutes.
-4. Disconnecting and reconnecting the controller does not crash the app and
+5. Disconnecting and reconnecting the controller does not crash the app and
    restores control without losing the current save.
-5. Rumble and motion input are recorded as supported, unsupported, or not
+6. Rumble and motion input are recorded as supported, unsupported, or not
    exposed for the exact controller model; do not infer either capability
    from the extended-gamepad declaration.
 
@@ -165,9 +183,8 @@ each observed result in [`remaining-work.md`](remaining-work.md). A controller
 forwarded through Simulator is useful diagnostic evidence, but only the
 physical-device replay closes the M4 acceptance gate.
 
-Enter is not Start. The touch layout deliberately posts the bindings above
-through SDL; a desktop keyboard remains diagnostic input rather than a
-substitute for the physical-controller acceptance test.
+Keyboard and pointing-device input remain diagnostic conveniences rather than
+substitutes for the physical-controller acceptance test.
 
 ## Required device acceptance checks
 

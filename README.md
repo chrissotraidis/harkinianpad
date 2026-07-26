@@ -168,8 +168,8 @@ You need macOS, Xcode and its command-line tools,
 ROM for first-run setup.
 
 ```sh
-brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng \
-  libogg libvorbis opus opusfile
+brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng libzip \
+  tinyxml2 libogg libvorbis opus opusfile
 
 git clone https://github.com/chrissotraidis/harkinianpad.git
 cd harkinianpad

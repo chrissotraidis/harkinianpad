@@ -8,10 +8,11 @@ the next reproducible gate.
 
 ## Goal
 
-Deliver a reproducible, controller-first native iOS/iPadOS port of Ship of
-Harkinian, from pinned upstream source inputs through a signed, installable,
-documented build. A passing intermediate build or runtime gate is progress,
-not completion.
+Deliver a reproducible native iOS/iPadOS port of Ship of Harkinian, with basic
+built-in touch input and the established physical-controller path, from
+pinned upstream source inputs through a signed, installable, documented
+build. A passing intermediate build or runtime gate is progress, not
+completion.
 
 ## Invariants
 
@@ -84,6 +85,38 @@ Simulator evidence as physical-device proof.
 
 ## Evidence log
 
+### 2026-07-25 — Reference-driven low-grip touch controls passed in Simulator
+
+- Expected: make a clean install testable without a paired controller using a
+  small, non-invasive layout modeled on the supplied reference: low control
+  stick, distinct right-side face/C groups, thin outlines, and an immediate
+  toggle.
+- Implementation: one UIKit overlay posts Shipwright's existing SDL keyboard
+  bindings. The stick is eight-way; the separate four-button D-pad, A/B,
+  duplicated left/right Z, L/R, Start, Menu, and separate four-button C
+  diamond use the existing mappings. All groups occupy the lower half of the
+  iPad rails, and adjacent directional buttons have explicit gaps. Empty
+  overlay space passes through, and
+  **Settings > Controls > Touch Controls** persists through the existing CVar
+  system.
+- Build/runtime evidence: the arm64 iPad Simulator target compiled and linked.
+  On iPad Pro 11-inch (M4), iOS 18.5, live Start advanced title to file select,
+  live A advanced the selected file flow, and the Menu button opened the
+  Controls panel. The visible **Touch Controls** switch removed and restored
+  the overlay without restart. The final accessibility tree exposes all 16
+  discrete buttons, including both Z placements and distinct D/C directions.
+- Device/package evidence: the same source compiled and linked for unsigned
+  arm64 iPhoneOS after a fresh Xcode build graph included the Objective-C++
+  overlay. The ROM-free package audit produced
+  `artifacts/HarkinianPad-9.2.3-unsigned.ipa`, SHA-256
+  `3866af64bb1d88ef1ae3d5ec05fda1371d13c596fddd2846c9945b38189ca631`.
+  This artifact is compile/package proof only; it still requires signing
+  before installation on a standard iPad.
+- Boundary: this proves Simulator rendering, SDL event delivery, button
+  behavior, and live overlay lifecycle. Physical grip, simultaneous
+  multi-touch feel, extended gameplay, and overlap review remain a real-iPad
+  gate. Physical-controller validation remains separately open.
+
 ### 2026-07-25 — Public clean-machine and package gate passed
 
 - Expected: prove that a copy containing only HarkinianPad's maintained files
@@ -147,8 +180,7 @@ Simulator evidence as physical-device proof.
 ### 2026-07-25 — M4b controller playtest handoff made reproducible
 
 - Expected: turn the still-blocked controller gate into one exact replay
-  without changing Shipwright's established SDL controller architecture or
-  adding the explicitly out-of-scope virtual gamepad.
+  without changing Shipwright's established SDL controller architecture.
 - Built-product evidence: the current Simulator app declares
   `GCSupportedGameControllers` with the `ExtendedGamepad` profile and
   `GCSupportsControllerUserInteraction=true`. Its bundled

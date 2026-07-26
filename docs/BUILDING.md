@@ -115,23 +115,48 @@ AltStore PAL, and SideStore are distinct distribution paths with their own
 account, region, review, and provisioning constraints; a successful local
 build does not prove any of them.
 
-## Controller playtest
+## Touch and controller playtest
 
-HarkinianPad intentionally has no virtual on-screen gamepad. On a physical
-iPhone or iPad, pair an MFi, Xbox, PlayStation, or other iOS-supported
-extended-gamepad controller in Settings before launching the app. For a
-Simulator-only check, connect the controller to the Mac and choose
-**I/O > Input > Send Game Controller to Device** in Simulator.
+HarkinianPad starts with a lower-half, low-grip touch layout. The left rail has
+L/Z, a separate four-button D-pad, and a low control stick. The right rail has
+Start/R, an A/B/Z cluster, a menu button, and a separate low four-button
+C diamond. The duplicated Z control keeps the trigger reachable from either
+grip. Empty overlay space passes through to the game and menus. Open the menu
+with **☰**, then turn the overlay off or back on under
+**Settings > Controls > Touch Controls**.
 
-At the title screen, press the controller's Menu/Start button. Confirm that:
+The basic touch bridge reuses the existing bindings:
 
-1. Menu/Start opens file select, A accepts, B cancels, and the left stick and
-   directional pad navigate without requiring touch or a keyboard.
-2. A save can be created or selected and Link can be controlled in active
+| Touch control | Binding |
+|---|---|
+| Stick | W/A/S/D, including diagonals |
+| D-pad | T/G/F/H |
+| A / B | X / C |
+| L / Z (either) / R | E / Z / R |
+| Start | Space |
+| C buttons | Arrow keys |
+| Menu | Escape |
+
+The touch stick is an eight-way testing control, not a replacement for the
+analog precision of a physical controller. On a physical iPhone or iPad, pair
+an MFi, Xbox, PlayStation, or other iOS-supported extended-gamepad controller
+in Settings before launching the app. For a Simulator-only check, connect the
+controller to the Mac and choose **I/O > Input > Send Game Controller to
+Device** in Simulator.
+
+At the title screen, test the touch layout and then the controller separately.
+Confirm that:
+
+1. Start opens file select, A accepts, B cancels, and the stick navigates.
+   Confirm the D-pad and C buttons emit their mapped inputs in gameplay or the
+   input viewer.
+2. Disabling **Touch Controls** removes the overlay immediately; enabling it
+   restores the overlay without restarting.
+3. A save can be created or selected and Link can be controlled in active
    gameplay for at least ten minutes.
-3. Disconnecting and reconnecting the controller does not crash the app and
+4. Disconnecting and reconnecting the controller does not crash the app and
    restores control without losing the current save.
-4. Rumble and motion input are recorded as supported, unsupported, or not
+5. Rumble and motion input are recorded as supported, unsupported, or not
    exposed for the exact controller model; do not infer either capability
    from the extended-gamepad declaration.
 
@@ -140,10 +165,9 @@ each observed result in [`remaining-work.md`](remaining-work.md). A controller
 forwarded through Simulator is useful diagnostic evidence, but only the
 physical-device replay closes the M4 acceptance gate.
 
-The generated desktop-keyboard fallback currently shows Start as Space, A as
-X, B as C, and movement as WASD. Enter is not Start. Simulator keyboard
-capture has not reliably advanced the title screen, so these bindings are not
-a substitute for the controller acceptance test.
+Enter is not Start. The touch layout deliberately posts the bindings above
+through SDL; a desktop keyboard remains diagnostic input rather than a
+substitute for the physical-controller acceptance test.
 
 ## Required device acceptance checks
 

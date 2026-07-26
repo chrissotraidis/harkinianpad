@@ -1,0 +1,551 @@
+diff --git a/soh/CMakeLists.txt b/soh/CMakeLists.txt
+index 6e57d8c3d..37602af3a 100644
+--- a/soh/CMakeLists.txt
++++ b/soh/CMakeLists.txt
+@@ -144,6 +144,7 @@ list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/soh/Enhancements/speechsynthesizer
+ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+     list(FILTER soh__ EXCLUDE REGEX "^soh/Network/")
+     list(FILTER soh__ EXCLUDE REGEX "^soh/SohGui/SohMenuNetwork\\.cpp$")
++    list(APPEND soh__ ${CMAKE_CURRENT_SOURCE_DIR}/ios/HarkinianPadTouchControls.mm)
+ endif()
+ 
+ # Create source groups that match the real file directory paths
+diff --git a/soh/ios/HarkinianPadTouchControls.h b/soh/ios/HarkinianPadTouchControls.h
+new file mode 100644
+index 000000000..3d83ed847
+--- /dev/null
++++ b/soh/ios/HarkinianPadTouchControls.h
+@@ -0,0 +1,12 @@
++#pragma once
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++int HarkinianPad_TouchControlsAvailable(void);
++void HarkinianPad_SetTouchControlsEnabled(int enabled);
++
++#ifdef __cplusplus
++}
++#endif
+diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
+new file mode 100644
+index 000000000..b9e784a26
+--- /dev/null
++++ b/soh/ios/HarkinianPadTouchControls.mm
+@@ -0,0 +1,454 @@
++#import <UIKit/UIKit.h>
++
++#include <SDL.h>
++
++#include "HarkinianPadTouchControls.h"
++
++static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
++    SDL_Event event = {};
++    event.type = pressed ? SDL_KEYDOWN : SDL_KEYUP;
++    event.key.timestamp = SDL_GetTicks();
++    event.key.state = pressed ? SDL_PRESSED : SDL_RELEASED;
++    event.key.repeat = 0;
++    event.key.keysym.scancode = scancode;
++    event.key.keysym.sym = SDL_GetKeyFromScancode(scancode);
++    SDL_Window* window = SDL_GetKeyboardFocus();
++    if (window != nullptr) {
++        event.key.windowID = SDL_GetWindowID(window);
++    }
++    SDL_PushEvent(&event);
++}
++
++@interface HarkinianPadTouchButton : UIButton
++
++@property(nonatomic) SDL_Scancode scancode;
++@property(nonatomic) BOOL inputPressed;
++@property(nonatomic) BOOL usesPillShape;
++
++- (instancetype)initWithLabel:(NSString*)label
++                     scancode:(SDL_Scancode)scancode
++                         pill:(BOOL)pill;
++- (void)cancelInput;
++
++@end
++
++@implementation HarkinianPadTouchButton
++
++- (instancetype)initWithLabel:(NSString*)label
++                     scancode:(SDL_Scancode)scancode
++                         pill:(BOOL)pill {
++    self = [super initWithFrame:CGRectZero];
++    if (self != nil) {
++        self.scancode = scancode;
++        self.usesPillShape = pill;
++        self.multipleTouchEnabled = YES;
++        self.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.38];
++        self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.58].CGColor;
++        self.layer.borderWidth = 2.0;
++        [self setTitle:label forState:UIControlStateNormal];
++        [self setTitleColor:[UIColor colorWithWhite:1.0 alpha:0.92]
++                   forState:UIControlStateNormal];
++        self.titleLabel.font = [UIFont systemFontOfSize:18.0 weight:UIFontWeightSemibold];
++        self.accessibilityLabel = label;
++
++        [self addTarget:self
++                      action:@selector(inputDown)
++            forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
++        [self addTarget:self
++                      action:@selector(inputUp)
++            forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside |
++                             UIControlEventTouchCancel | UIControlEventTouchDragExit];
++    }
++    return self;
++}
++
++- (void)layoutSubviews {
++    [super layoutSubviews];
++    self.layer.cornerRadius =
++        self.usesPillShape ? CGRectGetHeight(self.bounds) * 0.48
++                           : MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds)) * 0.5;
++}
++
++- (void)inputDown {
++    if (self.inputPressed) {
++        return;
++    }
++    self.inputPressed = YES;
++    self.backgroundColor = [UIColor colorWithWhite:0.72 alpha:0.48];
++    HarkinianPad_PushKey(self.scancode, YES);
++}
++
++- (void)inputUp {
++    if (!self.inputPressed) {
++        return;
++    }
++    self.inputPressed = NO;
++    self.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.38];
++    HarkinianPad_PushKey(self.scancode, NO);
++}
++
++- (void)cancelInput {
++    [self inputUp];
++}
++
++@end
++
++@interface HarkinianPadTouchStick : UIView
++
++@property(nonatomic, strong) UIView* knob;
++@property(nonatomic) BOOL upPressed;
++@property(nonatomic) BOOL downPressed;
++@property(nonatomic) BOOL leftPressed;
++@property(nonatomic) BOOL rightPressed;
++
++- (void)cancelInput;
++
++@end
++
++@implementation HarkinianPadTouchStick
++
++- (instancetype)initWithFrame:(CGRect)frame {
++    self = [super initWithFrame:frame];
++    if (self != nil) {
++        self.multipleTouchEnabled = NO;
++        self.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.30];
++        self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.42].CGColor;
++        self.layer.borderWidth = 2.0;
++        self.accessibilityLabel = @"Control Stick";
++
++        self.knob = [[UIView alloc] initWithFrame:CGRectZero];
++        self.knob.userInteractionEnabled = NO;
++        self.knob.backgroundColor = [UIColor colorWithRed:0.34 green:0.62 blue:0.82 alpha:0.68];
++        self.knob.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.62].CGColor;
++        self.knob.layer.borderWidth = 2.0;
++        [self addSubview:self.knob];
++    }
++    return self;
++}
++
++- (void)layoutSubviews {
++    [super layoutSubviews];
++    self.layer.cornerRadius = MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds)) * 0.5;
++    CGFloat knobSize = MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds)) * 0.43;
++    self.knob.bounds = CGRectMake(0.0, 0.0, knobSize, knobSize);
++    if (!self.upPressed && !self.downPressed && !self.leftPressed && !self.rightPressed) {
++        self.knob.center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
++    }
++    self.knob.layer.cornerRadius = knobSize * 0.5;
++}
++
++- (void)setScancode:(SDL_Scancode)scancode pressed:(BOOL)pressed state:(BOOL*)state {
++    if (*state == pressed) {
++        return;
++    }
++    *state = pressed;
++    HarkinianPad_PushKey(scancode, pressed);
++}
++
++- (void)updateForPoint:(CGPoint)point {
++    CGPoint center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
++    CGFloat radius = MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds)) * 0.34;
++    CGFloat dx = point.x - center.x;
++    CGFloat dy = point.y - center.y;
++    CGFloat distance = hypot(dx, dy);
++    if (distance > radius && distance > 0.0) {
++        dx = dx / distance * radius;
++        dy = dy / distance * radius;
++    }
++    self.knob.center = CGPointMake(center.x + dx, center.y + dy);
++
++    CGFloat threshold = radius * 0.30;
++    [self setScancode:SDL_SCANCODE_W pressed:dy < -threshold state:&_upPressed];
++    [self setScancode:SDL_SCANCODE_S pressed:dy > threshold state:&_downPressed];
++    [self setScancode:SDL_SCANCODE_A pressed:dx < -threshold state:&_leftPressed];
++    [self setScancode:SDL_SCANCODE_D pressed:dx > threshold state:&_rightPressed];
++}
++
++- (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
++    UITouch* touch = touches.anyObject;
++    if (touch != nil) {
++        [self updateForPoint:[touch locationInView:self]];
++    }
++}
++
++- (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
++    UITouch* touch = touches.anyObject;
++    if (touch != nil) {
++        [self updateForPoint:[touch locationInView:self]];
++    }
++}
++
++- (void)touchesEnded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
++    [self cancelInput];
++}
++
++- (void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
++    [self cancelInput];
++}
++
++- (void)cancelInput {
++    [self setScancode:SDL_SCANCODE_W pressed:NO state:&_upPressed];
++    [self setScancode:SDL_SCANCODE_S pressed:NO state:&_downPressed];
++    [self setScancode:SDL_SCANCODE_A pressed:NO state:&_leftPressed];
++    [self setScancode:SDL_SCANCODE_D pressed:NO state:&_rightPressed];
++    self.knob.center = CGPointMake(CGRectGetMidX(self.bounds), CGRectGetMidY(self.bounds));
++}
++
++@end
++
++@interface HarkinianPadTouchOverlay : UIView
++
++@property(nonatomic, strong) HarkinianPadTouchStick* controlStick;
++@property(nonatomic, strong) NSArray<HarkinianPadTouchButton*>* buttons;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonA;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonB;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonL;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonZLeft;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonZRight;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonR;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonStart;
++@property(nonatomic, strong) HarkinianPadTouchButton* buttonMenu;
++@property(nonatomic, strong) HarkinianPadTouchButton* dUp;
++@property(nonatomic, strong) HarkinianPadTouchButton* dDown;
++@property(nonatomic, strong) HarkinianPadTouchButton* dLeft;
++@property(nonatomic, strong) HarkinianPadTouchButton* dRight;
++@property(nonatomic, strong) HarkinianPadTouchButton* cUp;
++@property(nonatomic, strong) HarkinianPadTouchButton* cDown;
++@property(nonatomic, strong) HarkinianPadTouchButton* cLeft;
++@property(nonatomic, strong) HarkinianPadTouchButton* cRight;
++
++- (void)cancelAllInputs;
++
++@end
++
++@implementation HarkinianPadTouchOverlay
++
++- (instancetype)initWithFrame:(CGRect)frame {
++    self = [super initWithFrame:frame];
++    if (self != nil) {
++        self.backgroundColor = UIColor.clearColor;
++        self.multipleTouchEnabled = YES;
++
++        self.controlStick = [[HarkinianPadTouchStick alloc] initWithFrame:CGRectZero];
++        self.buttonA = [[HarkinianPadTouchButton alloc] initWithLabel:@"A" scancode:SDL_SCANCODE_X pill:NO];
++        self.buttonB = [[HarkinianPadTouchButton alloc] initWithLabel:@"B" scancode:SDL_SCANCODE_C pill:NO];
++        self.buttonL = [[HarkinianPadTouchButton alloc] initWithLabel:@"L" scancode:SDL_SCANCODE_E pill:YES];
++        self.buttonZLeft = [[HarkinianPadTouchButton alloc] initWithLabel:@"Z" scancode:SDL_SCANCODE_Z pill:NO];
++        self.buttonZRight = [[HarkinianPadTouchButton alloc] initWithLabel:@"Z" scancode:SDL_SCANCODE_Z pill:NO];
++        self.buttonR = [[HarkinianPadTouchButton alloc] initWithLabel:@"R" scancode:SDL_SCANCODE_R pill:YES];
++        self.buttonStart =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▶" scancode:SDL_SCANCODE_SPACE pill:NO];
++        self.buttonMenu =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"☰" scancode:SDL_SCANCODE_ESCAPE pill:NO];
++        self.dUp =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▲" scancode:SDL_SCANCODE_T pill:NO];
++        self.dDown =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▼" scancode:SDL_SCANCODE_G pill:NO];
++        self.dLeft =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"◀" scancode:SDL_SCANCODE_F pill:NO];
++        self.dRight =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▶" scancode:SDL_SCANCODE_H pill:NO];
++        self.cUp =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▲" scancode:SDL_SCANCODE_UP pill:NO];
++        self.cDown =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▼" scancode:SDL_SCANCODE_DOWN pill:NO];
++        self.cLeft =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"◀" scancode:SDL_SCANCODE_LEFT pill:NO];
++        self.cRight =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"▶" scancode:SDL_SCANCODE_RIGHT pill:NO];
++
++        self.buttonStart.accessibilityLabel = @"Start";
++        self.buttonMenu.accessibilityLabel = @"Menu";
++        self.buttonZLeft.accessibilityLabel = @"Z left";
++        self.buttonZRight.accessibilityLabel = @"Z right";
++        self.dUp.accessibilityLabel = @"D-pad Up";
++        self.dDown.accessibilityLabel = @"D-pad Down";
++        self.dLeft.accessibilityLabel = @"D-pad Left";
++        self.dRight.accessibilityLabel = @"D-pad Right";
++        self.cUp.accessibilityLabel = @"C Up";
++        self.cDown.accessibilityLabel = @"C Down";
++        self.cLeft.accessibilityLabel = @"C Left";
++        self.cRight.accessibilityLabel = @"C Right";
++
++        self.buttons = @[
++            self.buttonA, self.buttonB, self.buttonL, self.buttonZLeft,
++            self.buttonZRight, self.buttonR, self.buttonStart, self.buttonMenu,
++            self.dUp, self.dDown, self.dLeft, self.dRight, self.cUp, self.cDown,
++            self.cLeft, self.cRight,
++        ];
++        [self addSubview:self.controlStick];
++        for (HarkinianPadTouchButton* button in self.buttons) {
++            [self addSubview:button];
++        }
++    }
++    return self;
++}
++
++- (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
++    UIView* hit = [super hitTest:point withEvent:event];
++    return hit == self ? nil : hit;
++}
++
++- (void)layoutSubviews {
++    [super layoutSubviews];
++    UIEdgeInsets safe = self.safeAreaInsets;
++    CGFloat width = CGRectGetWidth(self.bounds);
++    CGFloat height = CGRectGetHeight(self.bounds);
++    CGFloat scale = MAX(0.78, MIN(1.12, height / 834.0));
++    CGFloat edge = 18.0 * scale;
++    CGFloat left = safe.left + edge;
++    CGFloat right = safe.right + edge;
++    CGFloat usableWidth = width - safe.left - safe.right;
++    CGFloat railWidth = MIN(250.0 * scale, usableWidth * 0.22);
++    CGFloat leftCenter = safe.left + railWidth * 0.5;
++    CGFloat rightCenter = width - safe.right - railWidth * 0.5;
++    CGFloat gripTopY = MAX(safe.top + edge, height * 0.43);
++    CGFloat middleCenterY = height * 0.62;
++    CGFloat lowCenterY = height * 0.85;
++
++    CGFloat stickSize = 160.0 * scale;
++    self.controlStick.frame =
++        CGRectMake(leftCenter - stickSize * 0.5, lowCenterY - stickSize * 0.5,
++                   stickSize, stickSize);
++
++    CGFloat pillHeight = 54.0 * scale;
++    CGFloat shoulderWidth = 106.0 * scale;
++    CGFloat leftRowY = gripTopY;
++    self.buttonL.frame =
++        CGRectMake(left, leftRowY, shoulderWidth, pillHeight);
++    self.buttonZLeft.frame =
++        CGRectMake(CGRectGetMaxX(self.buttonL.frame) + 10.0 * scale, leftRowY,
++                   pillHeight, pillHeight);
++
++    CGFloat dSize = 64.0 * scale;
++    CGFloat dRadius = 58.0 * scale;
++    CGPoint dCenter = CGPointMake(leftCenter, middleCenterY);
++    self.dUp.frame =
++        CGRectMake(dCenter.x - dSize * 0.5,
++                   dCenter.y - dRadius - dSize * 0.5, dSize, dSize);
++    self.dDown.frame =
++        CGRectMake(dCenter.x - dSize * 0.5,
++                   dCenter.y + dRadius - dSize * 0.5, dSize, dSize);
++    self.dLeft.frame =
++        CGRectMake(dCenter.x - dRadius - dSize * 0.5,
++                   dCenter.y - dSize * 0.5, dSize, dSize);
++    self.dRight.frame =
++        CGRectMake(dCenter.x + dRadius - dSize * 0.5,
++                   dCenter.y - dSize * 0.5, dSize, dSize);
++
++    CGFloat faceSize = 76.0 * scale;
++    CGFloat faceCenterY = middleCenterY;
++    CGFloat faceX = rightCenter - faceSize * 0.5;
++    self.buttonA.frame =
++        CGRectMake(faceX, faceCenterY + 12.0 * scale, faceSize, faceSize);
++    self.buttonB.frame =
++        CGRectMake(faceX - faceSize - 10.0 * scale,
++                   faceCenterY - faceSize * 0.5, faceSize, faceSize);
++    self.buttonZRight.frame =
++        CGRectMake(faceX, faceCenterY - faceSize - 12.0 * scale,
++                   faceSize, faceSize);
++
++    CGFloat cSize = 64.0 * scale;
++    CGFloat cRadius = 58.0 * scale;
++    CGPoint cCenter = CGPointMake(rightCenter, lowCenterY);
++    self.cUp.frame =
++        CGRectMake(cCenter.x - cSize * 0.5,
++                   cCenter.y - cRadius - cSize * 0.5, cSize, cSize);
++    self.cDown.frame =
++        CGRectMake(cCenter.x - cSize * 0.5,
++                   cCenter.y + cRadius - cSize * 0.5, cSize, cSize);
++    self.cLeft.frame =
++        CGRectMake(cCenter.x - cRadius - cSize * 0.5,
++                   cCenter.y - cSize * 0.5, cSize, cSize);
++    self.cRight.frame =
++        CGRectMake(cCenter.x + cRadius - cSize * 0.5,
++                   cCenter.y - cSize * 0.5, cSize, cSize);
++
++    CGFloat menuSize = 58.0 * scale;
++    self.buttonMenu.frame =
++        CGRectMake(width - right - menuSize, height * 0.72 - menuSize * 0.5,
++                   menuSize, menuSize);
++
++    CGFloat rightRowY = gripTopY;
++    self.buttonR.frame =
++        CGRectMake(width - right - shoulderWidth, rightRowY, shoulderWidth,
++                   pillHeight);
++    self.buttonStart.frame =
++        CGRectMake(CGRectGetMinX(self.buttonR.frame) - pillHeight - 12.0 * scale,
++                   rightRowY, pillHeight, pillHeight);
++
++    CGFloat labelSize = 18.0 * scale;
++    for (HarkinianPadTouchButton* button in self.buttons) {
++        button.titleLabel.font = [UIFont systemFontOfSize:labelSize weight:UIFontWeightSemibold];
++    }
++    self.buttonStart.titleLabel.font =
++        [UIFont systemFontOfSize:18.0 * scale weight:UIFontWeightBold];
++    self.buttonMenu.titleLabel.font =
++        [UIFont systemFontOfSize:22.0 * scale weight:UIFontWeightRegular];
++}
++
++- (void)cancelAllInputs {
++    [self.controlStick cancelInput];
++    for (HarkinianPadTouchButton* button in self.buttons) {
++        [button cancelInput];
++    }
++}
++
++@end
++
++static HarkinianPadTouchOverlay* sTouchOverlay;
++static BOOL sTouchControlsDesired;
++
++static UIWindow* HarkinianPad_ActiveWindow(void) {
++    for (UIScene* scene in UIApplication.sharedApplication.connectedScenes) {
++        if (![scene isKindOfClass:UIWindowScene.class]) {
++            continue;
++        }
++        for (UIWindow* window in ((UIWindowScene*)scene).windows) {
++            if (window.isKeyWindow) {
++                return window;
++            }
++        }
++    }
++    return UIApplication.sharedApplication.windows.firstObject;
++}
++
++static void HarkinianPad_ApplyTouchControlsState(void) {
++    if (!sTouchControlsDesired) {
++        [sTouchOverlay cancelAllInputs];
++        [sTouchOverlay removeFromSuperview];
++        sTouchOverlay = nil;
++        return;
++    }
++
++    UIWindow* window = HarkinianPad_ActiveWindow();
++    if (window == nil) {
++        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
++                       dispatch_get_main_queue(), ^{
++                           HarkinianPad_ApplyTouchControlsState();
++                       });
++        return;
++    }
++
++    if (sTouchOverlay == nil) {
++        sTouchOverlay = [[HarkinianPadTouchOverlay alloc] initWithFrame:window.bounds];
++        sTouchOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
++    }
++    if (sTouchOverlay.superview != window) {
++        [sTouchOverlay removeFromSuperview];
++        sTouchOverlay.frame = window.bounds;
++        [window addSubview:sTouchOverlay];
++    }
++    [window bringSubviewToFront:sTouchOverlay];
++}
++
++int HarkinianPad_TouchControlsAvailable(void) {
++    return 1;
++}
++
++void HarkinianPad_SetTouchControlsEnabled(int enabled) {
++    dispatch_async(dispatch_get_main_queue(), ^{
++        sTouchControlsDesired = enabled != 0;
++        HarkinianPad_ApplyTouchControlsState();
++    });
++}
+diff --git a/soh/soh/Enhancements/bootcommands.c b/soh/soh/Enhancements/bootcommands.c
+index e67aa4101..c17f48d72 100644
+--- a/soh/soh/Enhancements/bootcommands.c
++++ b/soh/soh/Enhancements/bootcommands.c
+@@ -3,6 +3,10 @@
+ #include "bootcommands.h"
+ #include "soh/cvar_prefixes.h"
+ 
++#ifdef __IOS__
++#include "ios/HarkinianPadTouchControls.h"
++#endif
++
+ void BootCommands_Init() {
+     // Clears vars to prevent randomizer menu from being disabled
+     CVarClear(CVAR_GENERAL("RandoGenerating")); // Clear when a crash happened during rando seed generation
+@@ -14,5 +18,8 @@ void BootCommands_Init() {
+     CVarRegisterInteger(CVAR_IMGUI_CONTROLLER_NAV, 1); // always enable controller nav on switch/wii u
+ #elif defined(__IOS__)
+     CVarSetInteger(CVAR_IMGUI_CONTROLLER_NAV, 1); // controller-first menus on iOS
++    CVarRegisterInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1);
++    HarkinianPad_SetTouchControlsEnabled(
++        CVarGetInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1));
+ #endif
+ }
+diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
+index 786c17591..bcef4c797 100644
+--- a/soh/soh/SohGui/SohMenuSettings.cpp
++++ b/soh/soh/SohGui/SohMenuSettings.cpp
+@@ -8,6 +8,10 @@
+ #include "UIWidgets.hpp"
+ #include <ship/controller/controldeck/ControlDeck.h>
+ 
++#ifdef __IOS__
++#include "ios/HarkinianPadTouchControls.h"
++#endif
++
+ extern "C" {
+ #include "include/z64audio.h"
+ #include "variables.h"
+@@ -434,6 +438,21 @@ void SohMenu::AddMenuSettings() {
+     path.sidebarName = "Controls";
+     path.column = SECTION_COLUMN_1;
+     AddSidebarEntry("Settings", "Controls", 2);
++#ifdef __IOS__
++    AddWidget(path, "Touch Controls", WIDGET_CVAR_CHECKBOX)
++        .CVar(CVAR_SETTING("HarkinianPad.TouchControls"))
++        .RaceDisable(false)
++        .PreFunc([](WidgetInfo& info) {
++            info.isHidden = !HarkinianPad_TouchControlsAvailable();
++        })
++        .Callback([](WidgetInfo& info) {
++            HarkinianPad_SetTouchControlsEnabled(
++                CVarGetInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1));
++        })
++        .Options(CheckboxOptions()
++                     .DefaultValue(true)
++                     .Tooltip("Shows the low-grip touch controller. Disable it when using a physical controller."));
++#endif
+     AddWidget(path, "Clear Devices", WIDGET_BUTTON)
+         .Callback([](WidgetInfo& info) {
+             SohGui::mModalWindow->RegisterPopup(

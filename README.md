@@ -2,9 +2,10 @@
 
 [![HarkinianPad iOS build](https://github.com/chrissotraidis/harkinianpad/actions/workflows/ios-build.yml/badge.svg)](https://github.com/chrissotraidis/harkinianpad/actions/workflows/ios-build.yml)
 
-HarkinianPad is a controller-first native iOS and iPadOS port of
+HarkinianPad is a native iOS and iPadOS port of
 [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), built on
-[libultraship](https://github.com/Kenix3/libultraship).
+[libultraship](https://github.com/Kenix3/libultraship), with built-in touch
+controls and support for iOS-compatible game controllers.
 
 It builds the complete Shipwright application as an arm64 iPhoneOS product,
 runs through SDL's UIKit entry point, renders through Metal, and performs
@@ -13,8 +14,9 @@ your own legally acquired supported ROM; HarkinianPad never ships Nintendo
 game data.
 
 > **Project state:** the full app builds and reaches the animated title screen
-> on iPhone and iPad Simulator. The next acceptance step is a signed run on a
-> real iPad with a Bluetooth/MFi controller. See
+> on iPhone and iPad Simulator. The low-grip touch layout can operate title
+> and file-select screens there. The next acceptance step is a signed run on a
+> real iPad, including physical touch and Bluetooth/MFi controller checks. See
 > [remaining work](docs/remaining-work.md) for the proof ledger.
 
 ## What works
@@ -25,14 +27,15 @@ game data.
 | Native app | Complete Shipwright configures, compiles, and links for arm64 iOS 14+ |
 | Rendering | Live Ocarina of Time scenes render through Metal on iPhone and iPad Simulator |
 | First-run setup | Files-visible ROM discovery and on-device `.o2r` generation pass clean iPhone/iPad Simulator replays |
-| Mobile UI | Adaptive iPhone/iPad menus, controller bindings, SDL audio settings, and non-quitting setup/retry flow |
+| Mobile UI | Adaptive menus, a toggleable lower-half N64 touch layout with separate D-pad/stick/C groups, controller bindings, SDL audio settings, and non-quitting setup/retry flow |
 | Lifecycle | Repeated Simulator suspend/resume, config flush, audio-interruption dispatch, and low-memory dispatch pass without breaking rendering |
 | Packaging | ROM-free app/IPA auditing, unsigned proof packaging, and a strict signed-package gate |
 
-Still requiring physical hardware: controller gameplay and capabilities,
-subjective audio, a real Files import, lifecycle/save persistence under device
-termination, signing, and installation. Simulator evidence is never presented
-as physical-device evidence.
+Still requiring physical hardware: touch grip and simultaneous-input feel,
+controller gameplay and capabilities, subjective audio, a real Files import,
+lifecycle/save persistence under device termination, signing, and
+installation. Simulator evidence is never presented as physical-device
+evidence.
 
 ## Quick start
 
@@ -106,8 +109,8 @@ Then:
 2. Move your supported ROM into **On My iPad > HarkinianPad** with Files.
 3. Return to HarkinianPad and choose **Rescan**.
 4. Leave the app open while it builds the local archive.
-5. Pair an iOS-supported extended-gamepad controller and press Menu/Start at
-   the title screen.
+5. Press **Start** on the built-in touch layout, or pair an iOS-supported
+   extended-gamepad controller and press its Menu/Start button.
 
 Before treating a device artifact as installable or sharing it, require the
 signed-package audit:
@@ -133,6 +136,7 @@ Detailed instructions and the physical-device checklist are in
 | [`scripts/generate-port-archive.sh`](scripts/generate-port-archive.sh) | Generate and audit Shipwright's ROM-free app resource |
 | [`scripts/package-ios.sh`](scripts/package-ios.sh) | Audit/signing gate and IPA packaging |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Simulator, physical-device, controller, signing, and packaging guide |
+| [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout, mapping, toggle, and acceptance contract |
 | [`docs/remaining-work.md`](docs/remaining-work.md) | Authoritative milestone queue and evidence log |
 | [`docs/ios-feasibility-and-implementation-plan.md`](docs/ios-feasibility-and-implementation-plan.md) | Architecture, implementation decisions, risks, and acceptance gates |
 | [`docs/findings/`](docs/findings/) | Source-cited technical investigation |
@@ -157,7 +161,8 @@ above and builds without a ROM.
 
 HarkinianPad is intentionally:
 
-- controller-first, with no virtual on-screen gamepad in the initial scope;
+- immediately testable with a simple built-in touch layout while retaining
+  the established physical-controller path;
 - Metal-only on iOS;
 - built with `ENABLE_SCRIPTING=OFF`;
 - offline and ROM-user-supplied;

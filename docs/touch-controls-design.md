@@ -8,7 +8,7 @@ landscape iPad, while leaving the center of the game readable.
 
 ## Visual reference
 
-The reference supplied on 2026-07-25 establishes four priorities:
+The reference supplied on 2026-07-25 establishes five priorities:
 
 1. The control stick sits low under the left thumb.
 2. The D-pad and control stick remain separate left-side groups.
@@ -28,18 +28,18 @@ ornament.
 │                                                              │
 │  [ L ] [ Z ]                               [Start] [ R ]      │
 │    ( spaced D-pad )                         ( B ) ( Z )        │
-│                                             [menu] ( A )       │
-│      ( control stick )                    ( spaced C diamond ) │
+│                                                 ( A ) [menu]   │
+│      ( control stick )                    ( compact C diamond )│
 └──────────────────────────────────────────────────────────────┘
 ```
 
 - Every control begins in the lower half of a landscape iPad.
-- L/Z and Start/R sit at roughly 43% height, within reach while holding the
+- L/Z and Start/R sit at roughly 38% height, within reach while holding the
   side edges.
-- The spaced D-pad and A/B/Z cluster sit at roughly 62% height.
+- The spaced D-pad and A/B/Z cluster sit at roughly 60% height.
 - The menu toggle stays on the outer-right rail between the face and C groups.
 - The control stick and spaced C-button diamond share a low thumb line at
-  roughly 85% height.
+  roughly 86% height.
 - Z is intentionally duplicated in the left shoulder row and right face
   cluster; both copies emit the same binding.
 - iPhone uses the same relationships at a smaller scale.
@@ -47,9 +47,10 @@ ornament.
 
 ## Input mapping
 
-The first custom layout reuses HarkinianPad's existing keyboard mappings by
-posting SDL key events. This keeps the change inside one iOS bridge and avoids
-modifying libultraship's controller model.
+The touch overlay reuses HarkinianPad's keyboard mappings by posting SDL key
+events. Two small iOS-only defaults make external testing less surprising:
+Return also maps to Start, while primary, secondary, and middle mouse clicks
+map to A, B, and Z.
 
 | Touch element | Existing binding | N64 action |
 |---|---|---|
@@ -60,7 +61,7 @@ modifying libultraship's controller model.
 | L | E | L |
 | Z (left and right) | Z | Z |
 | R | R | R |
-| Start | Space | Start |
+| Start | Space or Return | Start |
 | C up/down/left/right | Arrow keys | C buttons |
 | Menu | Escape | Open/close HarkinianPad menu |
 
@@ -75,12 +76,19 @@ for final gameplay feel.
 - Persist it with the existing CVar configuration.
 - Enabling installs the overlay on the active SDL window.
 - Disabling removes it immediately and releases every held input.
+- Opening the Shipwright menu temporarily removes the gameplay overlay and
+  releases held input; closing the menu restores it only when the persisted
+  Touch Controls setting remains enabled.
 
 ## Styling
 
 - Near-black fill at roughly one-third opacity.
 - Two-point light border with white labels.
 - Circular thumb and face controls; compact pills for shoulders.
+- N64-inspired hierarchy: blue A, green B, red Start, and amber C buttons.
+- Primary A/B buttons are 72 points at base scale; D-pad buttons are 58,
+  C buttons are 54, the menu is 50, and the stick is 150. The smaller
+  secondary controls preserve clear gaps between groups.
 - A brighter fill while pressed.
 - No textures, custom assets, haptics, editor, or resize system.
 
@@ -92,8 +100,13 @@ for final gameplay feel.
    groups in the lower half.
 3. Start advances the title screen and A/B navigate file select.
 4. The stick and C diamond emit the existing directional inputs.
-5. The Controls-menu toggle removes and restores the overlay without restart.
-6. The physical-controller path and ROM-free package audit are unchanged.
+5. Opening the menu hides the complete gameplay overlay; closing it restores
+   the overlay only when Touch Controls remains enabled.
+6. The Controls-menu toggle removes and restores the overlay without restart.
+7. A clean/default keyboard configuration accepts Space and Return for Start.
+8. A clean/default mouse configuration maps primary/secondary/middle click to
+   A/B/Z.
+9. The physical-controller path and ROM-free package audit are unchanged.
 
 Physical-iPad grip, simultaneous multi-touch feel, and obscured-content review
 remain hardware acceptance checks.

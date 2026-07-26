@@ -85,6 +85,41 @@ Simulator evidence as physical-device proof.
 
 ## Evidence log
 
+### 2026-07-26 — Touch spacing and external input defaults passed in Simulator
+
+- Expected: bring the reference-driven controls into comfortable iPad thumb
+  reach, reduce C-button crowding, and make keyboard/trackpad testing useful
+  without adding a second input system.
+- Visual audit and implementation: a live iPad Pro 11-inch (M4), iOS 18.5
+  capture was compared beside the supplied reference. The final layout uses
+  three distinct vertical bands: shoulders near 38% height, D-pad and A/B/Z
+  near 60%, and the stick/C diamond near 86%. C buttons are 54 points at base
+  scale, below the 72-point A/B controls; the menu is 50 points. Blue A, green
+  B, red Start, and amber C controls make the groups legible without adding
+  textures or decoration.
+- Input implementation: the existing SDL keyboard defaults now accept both
+  Space and Return for Start. On iOS, the existing mouse mapping system gains
+  primary click for A, secondary click for B, and middle click for Z. The SDL
+  game-controller path is unchanged.
+- Build/runtime evidence: the complete arm64 Simulator build succeeded, then
+  an incremental Release build compiled the final Objective-C++ layout and
+  linked/codesigned `HarkinianPad.app`. The latest app was reinstalled and
+  launched on the same Simulator. The complete overlay rendered without
+  overlaps. The live Menu button opened Controls with all gameplay controls
+  removed; closing the menu restored the complete overlay. The Touch Controls
+  setting also removed and restored the overlay without restart.
+- Device/package evidence: `scripts/build-ios.sh --device` replayed all five
+  maintained patches, and the final arm64 iPhoneOS build compiled the changed
+  keyboard, mouse, menu-lifecycle, and touch sources with `BUILD SUCCEEDED`.
+  The package audit produced the ROM-free unsigned proof artifact
+  `artifacts/HarkinianPad-9.2.3-unsigned.ipa`, SHA-256
+  `5eb6f3cff0bf49829a2f53e1b0b78e936203dd697aad6f6f384fdff3fd569ca5`.
+- Boundary: keyboard and mouse defaults apply automatically to clean
+  configurations; an existing installation must choose **Set Defaults** for
+  the relevant device once. No physical controller was available, so real
+  controller input, reconnect, rumble/motion capability, multitouch feel, and
+  signed-device installation remain open hardware gates.
+
 ### 2026-07-25 — Reference-driven low-grip touch controls passed in Simulator
 
 - Expected: make a clean install testable without a paired controller using a
@@ -187,9 +222,9 @@ Simulator evidence as physical-device proof.
   `gamecontrollerdb.txt` retains SHA-256
   `eb002773dc8a16aa96f9ee2609798e231a9deb60c45e21fbdd4e221c9e8b7d77`.
   The live iPad configuration maps SDL controller button 6 to Start, button 0
-  to A, and button 1 to B. Its displayed keyboard fallback is Space for
-  Start, X for A, C for B, and WASD for movement; Enter is not mapped to
-  Start.
+  to A, and button 1 to B. At that checkpoint, its displayed keyboard fallback
+  was Space for Start, X for A, C for B, and WASD for movement. The later
+  2026-07-26 input pass added Return as a second default Start binding.
 - Availability result: a fresh USB/Bluetooth system-profiler query still
   found no connected game controller, so no navigation, gameplay, reconnect,
   rumble, or motion result is claimed.

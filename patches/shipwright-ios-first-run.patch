@@ -1,0 +1,132 @@
+diff --git a/soh/soh/OTRGlobals.cpp b/soh/soh/OTRGlobals.cpp
+index 9b165f0..29cb087 100644
+--- a/soh/soh/OTRGlobals.cpp
++++ b/soh/soh/OTRGlobals.cpp
+@@ -134,14 +134,21 @@ const uint32_t defaultImGuiScale = 1;
+ 
+ const float imguiScaleOptionToValue[4] = { 0.75f, 1.0f, 1.5f, 2.0f };
+ 
+-static uint32_t GetDefaultImGuiScale() {
+ #ifdef __IOS__
++static bool IsIOSCompactDisplay() {
+     SDL_Rect displayBounds = {};
+-    if (SDL_GetDisplayUsableBounds(0, &displayBounds) == 0) {
+-        const int shortestSide = displayBounds.w < displayBounds.h ? displayBounds.w : displayBounds.h;
+-        if (shortestSide < 600) {
+-            return 0;
+-        }
++    if (SDL_GetDisplayUsableBounds(0, &displayBounds) != 0) {
++        return false;
++    }
++    const int shortestSide = displayBounds.w < displayBounds.h ? displayBounds.w : displayBounds.h;
++    return shortestSide < 600;
++}
++#endif
++
++static uint32_t GetDefaultImGuiScale() {
++#ifdef __IOS__
++    if (IsIOSCompactDisplay()) {
++        return 0;
+     }
+ #endif
+     return defaultImGuiScale;
+@@ -591,6 +598,21 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+             case ES_EXTRACT_ARGS: {
+ #if !defined(__SWITCH__) && !defined(__WIIU__)
+                 if (args.empty()) {
++#ifdef __IOS__
++                    SohGui::RegisterPopup(
++                        "Run Ship of Harkinian", "All files have been processed.", "Run Ship of Harkinian", "",
++                        [&]() {
++                            if (!std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) +
++                                                         "/oot.o2r") &&
++                                !std::filesystem::exists(Ship::Context::GetAppDirectoryPath(appShortName) +
++                                                         "/oot-mq.o2r")) {
++                                extractStep = ES_EXTRACT;
++                                promptStep = PS_FILE_CHECK;
++                            } else {
++                                extractStep = ES_VERIFY;
++                            }
++                        });
++#else
+                     SohGui::RegisterPopup(
+                         "Run Ship of Harkinian", "All files have been processed. Run SoH?", "Yes", "No",
+                         [&]() {
+@@ -605,6 +627,7 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                             }
+                         },
+                         [&]() { exit(0); });
++#endif
+                     break;
+                 }
+                 file = args.at(0);
+@@ -648,9 +671,16 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                             std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
+ 
+                         if (!ootO2RExists) {
++#ifdef __IOS__
++                            SohGui::RegisterPopup(
++                                "No O2R Files",
++                                "No O2R files found. Import a supported ROM with Files to generate one.", "Continue",
++                                "", [&]() { promptStep = PS_LOCAL; });
++#else
+                             SohGui::RegisterPopup(
+                                 "No O2R Files", "No O2R files found. Generate one now?", "Yes", "No",
+                                 [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
++#endif
+                         } else {
+                             extractStep = ES_VERIFY;
+                         }
+@@ -676,11 +706,13 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                     case PS_FIRST: {
+ #ifdef __IOS__
+                         promptStep = PS_WAIT;
++                        const char* filesLocation = IsIOSCompactDisplay() ? "On My iPhone" : "On My iPad";
++                        const std::string message =
++                            "Open Files and copy your legally acquired .z64, .n64, or .v64 ROM into\n" +
++                            std::string(filesLocation) + " > HarkinianPad. Leave HarkinianPad open.\n" +
++                            "Return here and choose Rescan.";
+                         SohGui::RegisterPopup(
+-                            "Import ROM in Files",
+-                            "Open Files and copy your legally acquired .z64, .n64, or .v64 ROM into\n"
+-                            "On My iPad > HarkinianPad. Return here, then choose Rescan.",
+-                            "Rescan", "Exit", [&]() { promptStep = PS_LOCAL; }, [&]() { exit(0); });
++                            "Import ROM in Files", message, "Rescan", "", [&]() { promptStep = PS_LOCAL; });
+ #else
+                         if (!extract.ManuallySearchForRomMatchingType(RomSearchMode::Both)) {
+                             promptStep = PS_FILE_CHECK;
+@@ -728,9 +760,19 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                     std::filesystem::exists(Ship::Context::LocateFileAcrossAppDirs("oot.o2r", appShortName));
+ 
+                 if (!ootO2RExists) {
++#ifdef __IOS__
++                    SohGui::RegisterPopup(
++                        "No ROM Archives", "No ROM O2R files detected. Import a supported ROM with Files.", "Try Again",
++                        "", [&]() {
++                            extractStep = ES_EXTRACT;
++                            promptStep = PS_LOCAL;
++                        });
++                    continue;
++#else
+                     SohGui::RegisterPopup("No ROM Archives",
+                                           "No ROM O2R files detected. Please generate a ROM O2R and relaunch.", "OK",
+                                           "", [&]() { exit(0); });
++#endif
+                 }
+                 extractDone = true;
+                 continue;
+@@ -763,7 +805,14 @@ void OTRGlobals::RunExtract(int argc, char* argv[]) {
+                 try {
+                     extractionTask->get();
+                 } catch (const std::exception& e) {
++#ifdef __IOS__
++                    SohGui::RegisterPopup("Extraction Failed", e.what(), "Try Again", "", [&]() {
++                        extractStep = ES_EXTRACT;
++                        promptStep = PS_LOCAL;
++                    });
++#else
+                     SohGui::RegisterPopup("Extraction Crashed", e.what(), "Close", "", []() { exit(1); });
++#endif
+                 }
+                 extractionTask.reset();
+             } else {

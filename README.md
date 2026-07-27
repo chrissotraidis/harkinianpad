@@ -11,7 +11,7 @@
   <img alt="iOS 14+" src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-14%2B-0A84FF?logo=apple">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
   <img alt="Physical iPad tested" src="https://img.shields.io/badge/physical%20iPad-tested-30D158">
-  <img alt="Downloadable IPA coming soon" src="https://img.shields.io/badge/IPA-coming%20soon-FF9F0A">
+  <a href="https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.1"><img alt="Download developer preview IPA" src="https://img.shields.io/badge/IPA-developer%20preview-FF9F0A"></a>
   <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
 </p>
 
@@ -31,7 +31,7 @@ ROM-derived archive.
 
 | Option | Status | What to do |
 |---|---|---|
-| Developer-preview `.ipa` | **Coming soon** | The planned download will be unsigned and must be re-signed with your Apple ID before installation. |
+| Developer-preview `.ipa` | **Available now** | [Download preview 0.1.0](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.1/HarkinianPad-0.1.0-preview.1-unsigned.ipa), then re-sign it with your Apple ID by following the [AltStore Classic guide](docs/INSTALL_IPA.md). |
 | Local iPad build | **Available now** | Build and sign with your Apple development team using the instructions below. |
 | Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
 | App Store / TestFlight | **Not announced** | No listing or public TestFlight currently exists. |
@@ -89,9 +89,9 @@ If Xcode needs to register the device or create a provisioning profile, open
 choose your team under **Signing & Capabilities**.
 
 See [`docs/BUILDING.md`](docs/BUILDING.md) for the complete Simulator,
-signing, installation, controller, and package-audit workflow. When the first
-developer-preview IPA is published, [`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md)
-is the short AltStore Classic installation guide.
+signing, installation, controller, and package-audit workflow.
+[`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md) is the short AltStore Classic
+installation guide for the downloadable developer preview.
 
 Before publishing or sharing a build, follow the
 [`release checklist`](docs/RELEASE_CHECKLIST.md).
@@ -190,7 +190,7 @@ emulator. A Majora's Mask ROM cannot be substituted for Ocarina of Time data.
 flowchart LR
     A["HarkinianPad scripts"] --> B["Pinned upstream source"]
     B --> C["Maintained iOS patches"]
-    C --> D["Signed iOS app"]
+    C --> D["iOS app or unsigned preview IPA"]
     E["Your supported ROM"] --> F["Files-visible app folder"]
     D --> G["Local extraction"]
     F --> G
@@ -214,6 +214,9 @@ identifier `com.chrissotraidis.harkinianpad`. The package is named
 certificate or provisioning profile; a sideload tool such as AltStore Classic
 must re-sign it for the installer's device.
 
+[Download developer preview 0.1.0](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.1/HarkinianPad-0.1.0-preview.1-unsigned.ipa)
+(`SHA-256: 579baae716361cd34430fee21f0c82755b2d874d1de23723f36f60f1264ef541`).
+
 The audit rejects Simulator products, stale signing material, original ROMs,
 ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data. For a local
 maintainer-signed package, use `REQUIRE_SIGNED=1 scripts/package-ios.sh`.
@@ -223,10 +226,9 @@ maintainer-signed package, use `REQUIRE_SIGNED=1 scripts/package-ios.sh`.
 <details>
 <summary><strong>Where is the IPA?</strong></summary>
 
-A re-signable developer-preview IPA is coming soon. No official download is
-available yet. The preview will not be an App Store or TestFlight build; follow
-the [AltStore Classic guide](docs/INSTALL_IPA.md) to sign the IPA with your own
-Apple ID.
+[Download the unsigned developer-preview IPA from GitHub Releases](https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.1).
+It is not an App Store or TestFlight build; follow the
+[AltStore Classic guide](docs/INSTALL_IPA.md) to sign it with your own Apple ID.
 </details>
 
 <details>
@@ -262,10 +264,10 @@ support still require model-specific verification.
 <details>
 <summary><strong>Is this an App Store or TestFlight release?</strong></summary>
 
-No. The first downloadable build is planned as an unsigned developer-preview
-IPA for personal re-signing. App Store, TestFlight, AltStore PAL, and SideStore
-distribution are separate projects with different signing, review, account,
-and regional requirements.
+No. The downloadable build is an unsigned developer-preview IPA for personal
+re-signing. App Store, TestFlight, AltStore PAL, and SideStore distribution are
+separate projects with different signing, review, account, and regional
+requirements.
 </details>
 
 <details>

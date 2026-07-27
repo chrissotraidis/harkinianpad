@@ -1,245 +1,127 @@
 # HarkinianPad
 
 <p align="center">
-  <strong>Ocarina of Time on iPad, through Ship of Harkinian.</strong><br>
-  Native Metal rendering, on-device setup, touch, keyboard, mouse, and
-  controller input—with a clear path for a separate Majora's Mask port.
+  <strong>Ship of Harkinian, rebuilt for iPhone and iPad.</strong><br>
+  Native Metal rendering, touch controls, Files-based setup, and support for
+  keyboards, pointing devices, and iOS game controllers.
 </p>
 
 <p align="center">
-  <a href="docs/remaining-work.md"><img alt="arm64 iOS build verified" src="https://img.shields.io/badge/build-arm64%20iOS-30D158"></a>
-  <img alt="iOS 14+" src="https://img.shields.io/badge/iOS-14%2B-0A84FF?logo=apple">
+  <img alt="iOS 14+" src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-14%2B-0A84FF?logo=apple">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
-  <img alt="Touch, keyboard, mouse, and controller input" src="https://img.shields.io/badge/input-touch%20%2B%20keyboard%20%2B%20controller-30D158">
-  <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF9F0A">
+  <img alt="Physical iPad tested" src="https://img.shields.io/badge/physical%20iPad-tested-30D158">
+  <img alt="Downloadable IPA coming soon" src="https://img.shields.io/badge/IPA-coming%20soon-FF9F0A">
+  <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
 </p>
 
-![HarkinianPad running the Ocarina of Time file-select screen with its complete lower-half touch controller](docs/readme/touch-controls-file-select.jpg)
+![HarkinianPad running Ocarina of Time on a physical iPad with its touch controller](docs/readme/harkinianpad-gameplay.jpg)
 
-HarkinianPad brings the complete
-[Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) application
-to Apple mobile devices. It runs through SDL's UIKit entry point, renders
-through Metal, discovers a user-provided ROM through Files, performs extraction
-inside the app container, and offers a grip-first N64 touch layout alongside
-keyboard, trackpad/mouse, and iOS-compatible game-controller input.
+HarkinianPad packages the full
+[Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) source port
+as a native iOS/iPadOS app. It renders through Metal, imports a user-provided
+supported Ocarina of Time ROM through Files, and includes a landscape touch
+controller that can be hidden whenever a physical controller is connected.
 
-This repository contains the reproducible iOS integration—not either game.
-HarkinianPad never ships a ROM or the ROM-derived archive needed to play.
+This repository contains the mobile integration and reproducible build
+scripts. It does **not** contain Ocarina of Time, a ROM, or a playable
+ROM-derived archive.
 
-> **Current status:** the full app builds for arm64 iPhoneOS and reaches the
-> title and file-select flows on iPhone and iPad Simulator. Touch Start, A, B,
-> Menu, and live overlay toggling have been exercised there. Signing,
-> installation, physical grip/multitouch feel, controller gameplay, and a full
-> Files import still require a real-iPad replay. The
-> [proof ledger](docs/remaining-work.md) separates completed evidence from open
-> hardware gates.
+## Install status
 
-## Choose your game
-
-HarkinianPad belongs to a family of Harbour Masters source ports, but the two
-Zelda games use different engines and different game data. This checkout makes
-that boundary explicit:
-
-| Game | Upstream engine | HarkinianPad status |
+| Option | Status | What to do |
 |---|---|---|
-| **The Legend of Zelda: Ocarina of Time** | [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) | **Supported now.** This repository builds the iOS/iPadOS app and imports a supported Ocarina of Time ROM on first launch. |
-| **The Legend of Zelda: Majora's Mask** | [2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian) | **Separate port required.** The mobile integration can be adapted to that engine, but this app does not currently accept or run a Majora's Mask ROM. |
+| Downloadable `.ipa` | **Coming soon** | No official download is available yet. It will still require a compatible personal-signing or sideload workflow. |
+| Local iPad build | **Available now** | Build and sign with your Apple development team using the instructions below. |
+| Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
+| App Store / TestFlight | **Not announced** | No listing or public TestFlight currently exists. |
 
-<details>
-<summary><strong>I have an Ocarina of Time ROM—what do I do?</strong></summary>
+The current development build has been signed, installed, and played on a
+12.9-inch iPad Pro (6th generation) running iPadOS 26.5.2. Files import,
+on-device archive loading, touch gameplay, save loading, the settings menu,
+and in-place app updates have all been exercised on that hardware.
 
-Build HarkinianPad, launch it once, then import your legally acquired supported
-ROM through the Files-visible HarkinianPad folder. Start with the
-[Simulator quick start](#build-for-simulator) or the
-[real-iPad guide](docs/BUILDING.md).
-</details>
+Two gates remain intentionally explicit:
 
-<details>
-<summary><strong>I have a Majora's Mask ROM—can I put it in HarkinianPad?</strong></summary>
+- SDL reports a working audio device, but audible physical-device output is
+  still being investigated.
+- The iOS controller path is present, but the physical controller,
+  disconnect/reconnect, rumble, and motion matrix has not been completed.
 
-Not in the current app. Majora's Mask is handled by the separate
-[2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian)
-codebase, which has its own supported-ROM list and archive format. Bringing it
-to iPad should reuse the small HarkinianPad mobile layer where practical, while
-remaining a separate build target rather than pretending the two ROMs are
-interchangeable.
-</details>
+## Get started
 
-## Why HarkinianPad exists
+You need:
 
-Ship of Harkinian already turns Ocarina of Time into a modern native source
-port. Libultraship already contains important iOS foundations. The missing
-piece was a complete, reproducible mobile product path connecting those layers:
+- a Mac with Xcode and its command-line tools;
+- [Homebrew](https://brew.sh);
+- an Apple ID configured in Xcode for physical-device signing; and
+- your own legally acquired, supported Ocarina of Time ROM.
 
-- a full Shipwright arm64 iOS build rather than an engine-only compile;
-- Metal and UIKit integration that survives the application lifecycle;
-- first-run setup that works through the Files-visible app container;
-- controls designed for an iPad held at both edges;
-- a ROM-free package audit and an explicit signed-installation gate; and
-- durable downstream patches that can be replayed on exact upstream revisions.
-
-That makes HarkinianPad useful beyond a one-off local build. It is a documented
-mobile-port baseline: every downstream change lives here, every upstream input
-is pinned, and every remaining hardware claim is called out instead of assumed.
-
-## What is different
-
-| | Desktop Ship of Harkinian | HarkinianPad |
-|---|---|---|
-| Platform shell | Desktop windowing and file flows | Native iOS/iPadOS app through SDL UIKit |
-| Rendering | Desktop backends | Metal on iPhone and iPad |
-| First run | Desktop ROM selection | Files-visible discovery and extraction inside the app container |
-| Touch | Not a desktop requirement | Complete lower-half N64 layout, enabled by default |
-| Controller | Desktop gamepads | Existing SDL controller path for iOS-compatible controllers |
-| Mobile UI | Desktop-scale menus | Adaptive iPhone/iPad menu scaling and non-quitting recovery flows |
-| Distribution safety | Platform-specific packaging | ROM-free app/IPA audit plus a strict signed-package gate |
-| Source strategy | Upstream repository | Pinned, fetch-only upstream inputs with reviewable HarkinianPad patches |
-
-HarkinianPad does not replace or impersonate its upstream projects. It is the
-iOS integration layer around them, and `chrissotraidis/harkinianpad` is the
-only repository to which this project's changes are published.
-
-## See it running
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/readme/touch-controls-file-list.jpg" alt="File list rendered through Metal with the HarkinianPad touch layout">
-    </td>
-    <td width="50%">
-      <img src="docs/readme/touch-controls-settings.jpg" alt="Ship of Harkinian Controls settings showing the HarkinianPad Touch Controls toggle">
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Immediately testable</strong><br>All N64 inputs are available from a clean launch.</td>
-    <td align="center"><strong>Out of the way when needed</strong><br>Touch controls toggle live under Settings → Controls.</td>
-  </tr>
-</table>
-
-These captures are from the real iPad Pro 11-inch Simulator build, not a
-mockup. The game imagery comes from a locally supplied ROM and is shown only
-to document the port in operation.
-
-## What works today
-
-| Area | Verified result |
-|---|---|
-| Reproducible source | Exact Shipwright, libultraship, ZAPDTR, and OTRExporter revisions are pinned; upstream push URLs are disabled |
-| Native app | Complete Shipwright configures, compiles, and links for arm64 iOS 14+ |
-| Rendering | Live title and file-select scenes render through Metal on iPhone and iPad Simulator |
-| First-run setup | Files-visible ROM discovery and on-device `.o2r` generation pass clean Simulator replays |
-| Touch | 16 discrete buttons plus a low control stick; Start/A/B/Menu and live off/on behavior exercised |
-| Controllers | Existing SDL game-controller bindings are built in; physical-device gameplay remains an open acceptance gate |
-| Lifecycle | Repeated suspend/resume, config flush, audio interruption, and low-memory dispatch pass in Simulator |
-| Packaging | ROM-free app/IPA audit passes; unsigned proof artifacts are rejected by the signed-only gate |
-
-Simulator evidence is not presented as physical-device evidence. The exact
-open matrix—real audio, Files import, controller reconnect/capabilities,
-multitouch feel, persistence after termination, signing, and installation—is
-maintained in [`docs/remaining-work.md`](docs/remaining-work.md).
-
-## How the build stays reproducible
-
-```mermaid
-flowchart LR
-    A["HarkinianPad scripts"] --> B["Pinned upstream sources"]
-    B --> C["Shipwright (Ocarina of Time)"]
-    C --> D["Maintained iOS patches"]
-    D --> I["Xcode iOS app"]
-    E["Your legally acquired ROM"] --> F["Files-visible app folder"]
-    I --> G["On-device extraction"]
-    F --> G
-    G --> H["Local oot.o2r + gameplay"]
-    J["Majora's Mask ROM"] -.-> K["Separate 2 Ship 2 Harkinian target required"]
-```
-
-The compile does not read your ROM. `scripts/build-ios.sh` fetches and verifies
-the pinned source inputs, disables their push URLs, applies this repository's
-patches, generates Shipwright's ROM-free `soh.o2r`, and builds the complete
-app. The user's ROM is introduced only after installation and the resulting
-`oot.o2r` stays inside the app container.
-
-## Quick start
-
-### Build for Simulator
-
-You need macOS, Xcode and its command-line tools,
-[Homebrew](https://brew.sh), and a legally acquired supported Ocarina of Time
-ROM for first-run setup.
+Install the build dependencies:
 
 ```sh
 brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng libzip \
   tinyxml2 libogg libvorbis opus opusfile
+```
 
+Clone and build:
+
+```sh
 git clone https://github.com/chrissotraidis/harkinianpad.git
 cd harkinianpad
 
-# Optional ignored holding area; the build never reads this ROM.
-cp "/path/to/your-supported-oot-rom.v64" ref/
-
+# Simulator
 scripts/build-ios.sh --simulator
-```
 
-The product is written to:
-
-```text
-build-ios-soh-sim/soh/Release-iphonesimulator/HarkinianPad.app
-```
-
-### Build and sign for a real iPad
-
-Choose a bundle identifier you control and the 10-character development-team
-identifier shown by Xcode:
-
-```sh
+# Physical iPhone or iPad
 DEVELOPMENT_TEAM=ABCDE12345 \
 BUNDLE_ID=com.yourname.harkinianpad \
 scripts/build-ios.sh --device
 ```
 
-If Xcode needs to register the device or create a profile, open
-`build-ios-soh/Ship.xcodeproj`, select the `soh` scheme and your iPad, then
-choose your team under **Signing & Capabilities**.
+Replace `ABCDE12345` with the 10-character team identifier shown in Xcode and
+use a bundle identifier that belongs to you. The device app is written to:
 
-Before treating the result as installable, run the strict audit:
-
-```sh
-REQUIRE_SIGNED=1 scripts/package-ios.sh
+```text
+build-ios-soh/soh/Release-iphoneos/HarkinianPad.app
 ```
 
-The audit refuses Simulator products, missing signing/provisioning, original
-ROMs, ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data inside
-`soh.o2r`. See the complete
-[build and physical-device guide](docs/BUILDING.md) before installation.
+If Xcode needs to register the device or create a provisioning profile, open
+`build-ios-soh/Ship.xcodeproj`, select the `soh` target and your device, then
+choose your team under **Signing & Capabilities**.
+
+See [`docs/BUILDING.md`](docs/BUILDING.md) for the complete Simulator,
+signing, installation, controller, and package-audit workflow.
 
 ## First launch
 
-1. Open HarkinianPad once so iOS creates its Files-visible folder.
-2. In Files, move your supported ROM to **On My iPad → HarkinianPad**.
-3. Return to HarkinianPad and choose **Rescan**.
-4. Leave the app open while it creates the local archive.
-5. Press the on-screen **Start** button, press **Space** or **Return** on a
-   keyboard, or use a connected controller.
+HarkinianPad never downloads or bundles game data.
 
-The original ROM and generated `oot.o2r` remain local. They are ignored by
-Git, excluded from CI, and rejected by the package audit.
+1. Launch HarkinianPad once so iOS creates its Files-visible folder.
+2. Open **Files → On My iPad → HarkinianPad**.
+3. Move your supported Ocarina of Time ROM into that folder.
+4. Return to HarkinianPad and select **Rescan**.
+5. Leave the app open while it creates the local `oot.o2r` archive.
+6. Press the on-screen Start button or Start on a connected controller.
 
-## Controls
+The original ROM and generated archive stay inside the app container. They
+are ignored by Git and rejected by the repository's package audit.
 
-The overlay is designed around the lower half of a landscape iPad so both
-hands can remain on the side edges. Its shoulder, face/D-pad, and stick/C
-groups occupy three distinct bands rather than competing for the same thumb
-space:
+## Touch controls
 
-- **Left:** L/Z shoulder row, separate D-pad, and a low eight-way control stick.
-- **Right:** Start/R shoulder row, A/B/Z cluster, Menu, and a separate low
-  C-button diamond.
-- **Menus:** opening **☰** hides the gameplay controls so settings remain
-  unobstructed; closing the menu restores them automatically.
-- **Toggle:** use **Settings → Controls → Touch Controls** to disable or
-  re-enable the overlay entirely.
+The controller is arranged for a landscape iPad held at both edges:
 
-| Touch control | Existing Shipwright binding |
+- **Left:** L and Z, a compact D-pad, and the control stick.
+- **Right:** Start and R, the A/B/Z face cluster, and the C-button diamond.
+- **Menu:** the small `•••` button remains available even when gameplay touch
+  controls are disabled.
+- **Toggle:** use **Settings → Controls → Touch Controls** to hide or restore
+  the gameplay overlay.
+- **Safety:** Reset requires confirmation instead of restarting immediately.
+
+Opening the menu hides the gameplay controls so the settings interface remains
+usable. Closing it restores the controls only when Touch Controls is enabled.
+
+| Touch control | Shipwright binding |
 |---|---|
 | Control stick | W/A/S/D, including diagonals |
 | D-pad | T/G/F/H |
@@ -249,165 +131,163 @@ space:
 | C buttons | Arrow keys |
 | Menu | Escape |
 
-The touch stick is intentionally a simple eight-way testing control. A
-physical controller remains the reference path for analog precision. The full
-layout and acceptance contract are in
-[`docs/touch-controls-design.md`](docs/touch-controls-design.md).
+The touch stick is currently an eight-way control. A physical controller
+remains the preferred option for full analog precision.
 
-Keyboard, trackpad/mouse, and controller input use Shipwright's native input
-system:
+## Current screenshots
 
-- **Keyboard:** W/A/S/D moves, X is A, C is B, Z is Z, Space or Return is
-  Start, arrow keys are C buttons, and Escape opens the menu.
-- **Trackpad or mouse:** primary click is A, secondary click is B, and middle
-  click is Z. Pair it with the keyboard for movement.
-- **Controller:** the left stick, face buttons, triggers/shoulders, Start,
-  D-pad, and right stick retain Shipwright's SDL game-controller mappings.
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/readme/simulator-file-select.jpg" alt="Current HarkinianPad file-select screen in iPad Simulator">
+    </td>
+    <td width="50%">
+      <img src="docs/readme/simulator-settings.jpg" alt="Current HarkinianPad settings interface in iPad Simulator">
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Ready to play</strong><br>Every N64 input is available without a separate controller.</td>
+    <td align="center"><strong>Adjust while running</strong><br>Touch controls can be toggled from Settings → Controls.</td>
+  </tr>
+</table>
 
-These defaults apply automatically to a clean configuration. On an existing
-installation, choose **Set Defaults** for Keyboard or Mouse in
-**Settings → Controls** to add the new defaults without rebuilding.
+The hero image is from the physical iPad build. The two interface captures are
+from the current iPad Simulator build. All game data used for these captures
+was supplied locally and is not part of this repository.
+
+## What works
+
+| Area | Current result |
+|---|---|
+| Native app | Complete Shipwright app builds for arm64 iOS/iPadOS 14+ |
+| Rendering | Metal rendering works in Simulator and on physical iPad |
+| Game setup | Files-visible ROM import and local `oot.o2r` loading work |
+| Touch | Stick, D-pad, A/B/Z, C buttons, shoulders, Start, and persistent menu access |
+| Saves | File creation/loading and in-place app updates preserving Documents data work |
+| Input options | Touch, keyboard, mouse/trackpad, and SDL's iOS controller path are included |
+| Packaging | ROM/game-data exclusions and signed-package checks are built into the scripts |
+
+For detailed engineering evidence and remaining hardware checks, see
+[`docs/remaining-work.md`](docs/remaining-work.md).
+
+## Supported game
+
+| Game | Engine | Status |
+|---|---|---|
+| **The Legend of Zelda: Ocarina of Time** | [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) | Supported |
+| **The Legend of Zelda: Majora's Mask** | [2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian) | Not supported by this app; it requires a separate port |
+
+HarkinianPad is a native source-port integration, not a general Nintendo 64
+emulator. A Majora's Mask ROM cannot be substituted for Ocarina of Time data.
+
+## Reproducible and ROM-free
+
+```mermaid
+flowchart LR
+    A["HarkinianPad scripts"] --> B["Pinned upstream source"]
+    B --> C["Maintained iOS patches"]
+    C --> D["Signed iOS app"]
+    E["Your supported ROM"] --> F["Files-visible app folder"]
+    D --> G["Local extraction"]
+    F --> G
+    G --> H["Local oot.o2r and gameplay"]
+```
+
+The compile never reads your ROM. `scripts/build-ios.sh` fetches exact upstream
+revisions, disables their push URLs, applies the maintained patches, generates
+Shipwright's ROM-free `soh.o2r`, and builds the app. Your ROM is introduced
+only after installation.
+
+Before installing or sharing a local device build, run:
+
+```sh
+REQUIRE_SIGNED=1 scripts/package-ios.sh
+```
+
+The audit rejects Simulator products, missing signing/provisioning, original
+ROMs, ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data in the app
+package.
 
 ## Frequently asked questions
 
 <details>
-<summary><strong>Is HarkinianPad an emulator?</strong></summary>
+<summary><strong>Where is the IPA?</strong></summary>
 
-No. It is an iOS integration of Ship of Harkinian, a native source port built
-from the Ocarina of Time decompilation project and libultraship. Your supported
-ROM is used locally to generate the data archive the source port requires.
+A downloadable IPA is coming soon. The current repository supports local
+Xcode builds, but no official public binary is available yet. An IPA does not
+remove Apple's signing requirements; installation will still need a compatible
+personal-signing or sideload workflow.
 </details>
 
 <details>
 <summary><strong>Does this repository include Ocarina of Time?</strong></summary>
 
-No. It contains no ROM and no playable ROM-derived archive. You must provide
-your own legally acquired supported copy. Do not open an issue asking for game
-data or download links.
+No. You must provide your own legally acquired supported ROM. Do not open
+issues requesting game data or download links.
 </details>
 
 <details>
-<summary><strong>Does HarkinianPad run Majora's Mask?</strong></summary>
+<summary><strong>Why can I see the game but not hear it?</strong></summary>
 
-Not today. The current app is built from Ship of Harkinian and accepts supported
-Ocarina of Time data. Majora's Mask uses
-[2 Ship 2 Harkinian](https://github.com/HarbourMasters/2ship2harkinian);
-support requires a separate integration and build target. A Majora's Mask ROM
-placed in `ref/` or the app's Files folder will not make this binary compatible.
+The SDL audio backend initializes on iPad, but audible physical-device output
+is still an active investigation. The README will not claim working speaker,
+headphone, or Bluetooth audio until those paths are physically verified.
 </details>
 
 <details>
-<summary><strong>Can another Mac reproduce the build if my ROM is under <code>ref/</code>?</strong></summary>
+<summary><strong>Can I hide touch controls and get them back later?</strong></summary>
 
-Yes. Everything except `ref/README.md` is ignored there, and the ROM is not a
-compile input. A clean checkout fetches exact upstream revisions and replays
-the maintained patches. You import the ROM into the installed app later.
+Yes. The persistent `•••` button keeps the menu reachable. Open
+**Settings → Controls** and toggle **Touch Controls**.
 </details>
 
 <details>
-<summary><strong>Can I install the unsigned IPA from CI or <code>scripts/package-ios.sh</code>?</strong></summary>
+<summary><strong>Does it support controllers?</strong></summary>
 
-Not on a standard device. The unsigned IPA is reproducibility and package-audit
-proof only. A real iPad build needs your Apple development team, unique bundle
-identifier, valid signature, and provisioning profile.
-</details>
-
-<details>
-<summary><strong>Do Bluetooth and USB controllers work?</strong></summary>
-
-HarkinianPad retains SDL's iOS game-controller path and the existing Shipwright
-bindings for compatible controllers. The app builds with that path enabled,
-but the physical-device gameplay, reconnect, rumble, and motion matrix is still
-an explicit hardware acceptance gate.
-</details>
-
-<details>
-<summary><strong>Can I hide the touch controls?</strong></summary>
-
-Yes. Use **Settings → Controls → Touch Controls**. The change is immediate,
-persists through Shipwright's configuration system, and releases held input
-when the overlay is removed.
-</details>
-
-<details>
-<summary><strong>Do Space and Return both work as Start?</strong></summary>
-
-Yes. Both are included in the current default keyboard mapping. If the app
-already has an older controller configuration, choose **Set Defaults** for
-Keyboard under **Settings → Controls** once.
+The existing Shipwright SDL controller mappings are compiled into the app for
+iOS-compatible controllers. Physical gameplay, reconnect, rumble, and motion
+support still require model-specific verification.
 </details>
 
 <details>
 <summary><strong>Is this an App Store or TestFlight release?</strong></summary>
 
-No. The current scope is a reproducible local Xcode build and physical-device
-test path. App Store, TestFlight, AltStore PAL, and SideStore distribution each
-have separate signing, review, account, and regional requirements.
+No. A downloadable IPA is planned first. App Store, TestFlight, AltStore PAL,
+and SideStore distribution each have separate signing, review, account, and
+regional requirements.
 </details>
 
 <details>
 <summary><strong>What is the licensing status?</strong></summary>
 
 Each upstream component retains its own license and copyright. Libultraship,
-ZAPDTR, OTRExporter, SDL, and their dependencies use permissive licenses. The
-pinned Shipwright tree has no top-level license file; that unresolved upstream
-gap is documented in the
-[licensing findings](docs/findings/05-priorart-licensing.md) and should be
-settled before broad binary distribution.
-</details>
-
-<details>
-<summary><strong>What remains before calling the port complete?</strong></summary>
-
-A signed real-iPad replay: Files import and extraction, sustained touch and
-controller gameplay, simultaneous multitouch feel, controller reconnect and
-capabilities, speaker/headphone audio, lifecycle persistence, and final
-ROM-free package verification. Follow the
-[authoritative queue](docs/remaining-work.md), not assumptions.
+ZAPDTR, OTRExporter, SDL, and their dependencies carry their respective
+licenses. The pinned Shipwright tree and this repository currently have no
+single top-level project license, so do not describe the project as broadly
+redistributable open source without resolving that boundary.
 </details>
 
 ## Project map
 
 | Path | Purpose |
 |---|---|
-| [`scripts/build-ios.sh`](scripts/build-ios.sh) | Clean-machine full-app build entry point |
-| [`scripts/clone-sources.sh`](scripts/clone-sources.sh) | Fetch and verify pinned, push-disabled inputs |
-| [`scripts/generate-port-archive.sh`](scripts/generate-port-archive.sh) | Generate and audit Shipwright's ROM-free app resource |
-| [`scripts/package-ios.sh`](scripts/package-ios.sh) | Audit signing, device platform, and package contents |
-| [`patches/`](patches/) | Reviewable HarkinianPad changes replayed onto pinned sources |
-| [`docs/BUILDING.md`](docs/BUILDING.md) | Simulator, signing, physical-device, controller, and packaging guide |
-| [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout, mapping, and acceptance contract |
-| [`docs/remaining-work.md`](docs/remaining-work.md) | Authoritative milestone queue and evidence ledger |
-| [`docs/ios-feasibility-and-implementation-plan.md`](docs/ios-feasibility-and-implementation-plan.md) | Architecture, decisions, risks, and acceptance gates |
-| [`docs/findings/`](docs/findings/) | Source-cited platform, rendering, audio, filesystem, and licensing research |
+| [`scripts/build-ios.sh`](scripts/build-ios.sh) | Complete Simulator or device build |
+| [`scripts/package-ios.sh`](scripts/package-ios.sh) | Signed-package and game-data audit |
+| [`patches/`](patches/) | HarkinianPad changes replayed onto pinned upstream source |
+| [`docs/BUILDING.md`](docs/BUILDING.md) | Full build, signing, installation, and testing guide |
+| [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout and input contract |
+| [`docs/remaining-work.md`](docs/remaining-work.md) | Evidence ledger and remaining gates |
 | [`ref/`](ref/) | Ignored local reference area; only its safety README is tracked |
 
-Generated `sources/`, `build*/`, `artifacts/`, ROMs, and ROM-derived archives
-are ignored and must never be staged.
-
-## Contributing
-
-Keep changes small, testable, and owned by this repository:
-
-1. Reproduce the relevant gate before editing.
-2. Make the narrowest HarkinianPad change that closes it.
-3. Re-run the Simulator or device/package check appropriate to the change.
-4. Update the proof ledger with observed behavior and remaining risk.
-5. Never commit a ROM, `oot*.o2r`, `.otr`, extracted asset, signing secret, or
-   generated upstream checkout.
-
-Do not push HarkinianPad changes to Shipwright, libultraship, ZAPDTR,
-OTRExporter, or forks made only for reference. Upstream contribution is a
-separate, deliberate process.
+Generated source trees, build directories, artifacts, ROMs, and ROM-derived
+archives are ignored and must never be committed.
 
 ## Legal and acknowledgements
 
 HarkinianPad is an unofficial community project and is not affiliated with or
-endorsed by Nintendo or Harbour Masters. The repository does not provide the
-game, a ROM, or the playable ROM-derived archive. Documentation screenshots
-show a legally supplied local copy running in Simulator and are included only
-to demonstrate this port.
+endorsed by Nintendo or Harbour Masters. It does not provide the game, ROM
+downloads, or playable ROM-derived data.
 
-This work builds on Ship of Harkinian, libultraship, ZAPDTR, OTRExporter, the
-Ocarina of Time decompilation project, SDL, and their contributors. All
-projects and trademarks belong to their respective owners.
+This project builds on Ship of Harkinian, libultraship, ZAPDTR, OTRExporter,
+the Ocarina of Time decompilation project, SDL, and their contributors. All
+projects, copyrights, and trademarks belong to their respective owners.

@@ -31,10 +31,10 @@ index 000000000..30ea1d3e5
 +#endif
 diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
 new file mode 100644
-index 000000000..684920368
+index 000000000..cdba60a49
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.mm
-@@ -0,0 +1,497 @@
+@@ -0,0 +1,522 @@
 +#import <UIKit/UIKit.h>
 +
 +#include <atomic>
@@ -258,7 +258,6 @@ index 000000000..684920368
 +@property(nonatomic, strong) HarkinianPadTouchButton* buttonZRight;
 +@property(nonatomic, strong) HarkinianPadTouchButton* buttonR;
 +@property(nonatomic, strong) HarkinianPadTouchButton* buttonStart;
-+@property(nonatomic, strong) HarkinianPadTouchButton* buttonMenu;
 +@property(nonatomic, strong) HarkinianPadTouchButton* dUp;
 +@property(nonatomic, strong) HarkinianPadTouchButton* dDown;
 +@property(nonatomic, strong) HarkinianPadTouchButton* dLeft;
@@ -289,8 +288,6 @@ index 000000000..684920368
 +        self.buttonR = [[HarkinianPadTouchButton alloc] initWithLabel:@"R" scancode:SDL_SCANCODE_R pill:YES];
 +        self.buttonStart =
 +            [[HarkinianPadTouchButton alloc] initWithLabel:@"▶" scancode:SDL_SCANCODE_SPACE pill:NO];
-+        self.buttonMenu =
-+            [[HarkinianPadTouchButton alloc] initWithLabel:@"☰" scancode:SDL_SCANCODE_ESCAPE pill:NO];
 +        self.dUp =
 +            [[HarkinianPadTouchButton alloc] initWithLabel:@"▲" scancode:SDL_SCANCODE_T pill:NO];
 +        self.dDown =
@@ -327,7 +324,6 @@ index 000000000..684920368
 +        }
 +
 +        self.buttonStart.accessibilityLabel = @"Start";
-+        self.buttonMenu.accessibilityLabel = @"Menu";
 +        self.buttonZLeft.accessibilityLabel = @"Z left";
 +        self.buttonZRight.accessibilityLabel = @"Z right";
 +        self.dUp.accessibilityLabel = @"D-pad Up";
@@ -341,7 +337,7 @@ index 000000000..684920368
 +
 +        self.buttons = @[
 +            self.buttonA, self.buttonB, self.buttonL, self.buttonZLeft,
-+            self.buttonZRight, self.buttonR, self.buttonStart, self.buttonMenu,
++            self.buttonZRight, self.buttonR, self.buttonStart,
 +            self.dUp, self.dDown, self.dLeft, self.dRight, self.cUp, self.cDown,
 +            self.cLeft, self.cRight,
 +        ];
@@ -374,24 +370,32 @@ index 000000000..684920368
 +    CGFloat gripTopY = MAX(safe.top + edge, height * 0.38);
 +    CGFloat middleCenterY = height * 0.60;
 +    CGFloat lowCenterY = height * 0.86;
++    CGFloat stickCenterX = leftCenter + 65.0 * scale;
++    CGFloat stickCenterY = lowCenterY - 70.0 * scale;
++    CGFloat dpadCenterX = leftCenter - 30.0 * scale;
++    CGFloat dpadCenterY = middleCenterY + 5.0 * scale;
++    CGFloat faceCenterX = rightCenter + 24.0 * scale;
++    CGFloat faceCenterY = middleCenterY + 30.0 * scale;
++    CGFloat cpadCenterX = rightCenter + 24.0 * scale;
++    CGFloat cpadCenterY = lowCenterY - 20.0 * scale;
 +
 +    CGFloat stickSize = 150.0 * scale;
 +    self.controlStick.frame =
-+        CGRectMake(leftCenter - stickSize * 0.5, lowCenterY - stickSize * 0.5,
++        CGRectMake(stickCenterX - stickSize * 0.5, stickCenterY - stickSize * 0.5,
 +                   stickSize, stickSize);
 +
 +    CGFloat pillHeight = 54.0 * scale;
 +    CGFloat shoulderWidth = 106.0 * scale;
-+    CGFloat leftRowY = gripTopY;
++    CGFloat leftRowY = gripTopY + 55.0 * scale;
 +    self.buttonL.frame =
 +        CGRectMake(left, leftRowY, shoulderWidth, pillHeight);
 +    self.buttonZLeft.frame =
 +        CGRectMake(CGRectGetMaxX(self.buttonL.frame) + 10.0 * scale, leftRowY,
 +                   pillHeight, pillHeight);
 +
-+    CGFloat dSize = 58.0 * scale;
-+    CGFloat dRadius = 54.0 * scale;
-+    CGPoint dCenter = CGPointMake(leftCenter, middleCenterY);
++    CGFloat dSize = 52.0 * scale;
++    CGFloat dRadius = 48.0 * scale;
++    CGPoint dCenter = CGPointMake(dpadCenterX, dpadCenterY);
 +    self.dUp.frame =
 +        CGRectMake(dCenter.x - dSize * 0.5,
 +                   dCenter.y - dRadius - dSize * 0.5, dSize, dSize);
@@ -405,9 +409,8 @@ index 000000000..684920368
 +        CGRectMake(dCenter.x + dRadius - dSize * 0.5,
 +                   dCenter.y - dSize * 0.5, dSize, dSize);
 +
-+    CGFloat faceSize = 72.0 * scale;
-+    CGFloat faceCenterY = middleCenterY;
-+    CGFloat faceX = rightCenter - faceSize * 0.5;
++    CGFloat faceSize = 66.0 * scale;
++    CGFloat faceX = faceCenterX - faceSize * 0.5;
 +    self.buttonA.frame =
 +        CGRectMake(faceX, faceCenterY + 12.0 * scale, faceSize, faceSize);
 +    self.buttonB.frame =
@@ -417,9 +420,9 @@ index 000000000..684920368
 +        CGRectMake(faceX, faceCenterY - faceSize - 12.0 * scale,
 +                   faceSize, faceSize);
 +
-+    CGFloat cSize = 54.0 * scale;
-+    CGFloat cRadius = 50.0 * scale;
-+    CGPoint cCenter = CGPointMake(rightCenter, lowCenterY);
++    CGFloat cSize = 46.0 * scale;
++    CGFloat cRadius = 44.0 * scale;
++    CGPoint cCenter = CGPointMake(cpadCenterX, cpadCenterY);
 +    self.cUp.frame =
 +        CGRectMake(cCenter.x - cSize * 0.5,
 +                   cCenter.y - cRadius - cSize * 0.5, cSize, cSize);
@@ -433,12 +436,7 @@ index 000000000..684920368
 +        CGRectMake(cCenter.x + cRadius - cSize * 0.5,
 +                   cCenter.y - cSize * 0.5, cSize, cSize);
 +
-+    CGFloat menuSize = 50.0 * scale;
-+    self.buttonMenu.frame =
-+        CGRectMake(width - right - menuSize, height * 0.72 - menuSize * 0.5,
-+                   menuSize, menuSize);
-+
-+    CGFloat rightRowY = gripTopY;
++    CGFloat rightRowY = gripTopY + 55.0 * scale;
 +    self.buttonR.frame =
 +        CGRectMake(width - right - shoulderWidth, rightRowY, shoulderWidth,
 +                   pillHeight);
@@ -452,8 +450,6 @@ index 000000000..684920368
 +    }
 +    self.buttonStart.titleLabel.font =
 +        [UIFont systemFontOfSize:18.0 * scale weight:UIFontWeightBold];
-+    self.buttonMenu.titleLabel.font =
-+        [UIFont systemFontOfSize:22.0 * scale weight:UIFontWeightRegular];
 +}
 +
 +- (void)cancelAllInputs {
@@ -466,6 +462,7 @@ index 000000000..684920368
 +@end
 +
 +static HarkinianPadTouchOverlay* sTouchOverlay;
++static HarkinianPadTouchButton* sMenuButton;
 +static BOOL sTouchControlsDesired;
 +static std::atomic_bool sTouchControlsMenuVisible(false);
 +
@@ -483,20 +480,47 @@ index 000000000..684920368
 +    return UIApplication.sharedApplication.windows.firstObject;
 +}
 +
-+static void HarkinianPad_ApplyTouchControlsState(void) {
-+    if (!sTouchControlsDesired || sTouchControlsMenuVisible.load()) {
-+        [sTouchOverlay cancelAllInputs];
-+        [sTouchOverlay removeFromSuperview];
-+        sTouchOverlay = nil;
-+        return;
++static void HarkinianPad_InstallMenuButton(UIWindow* window) {
++    if (sMenuButton == nil) {
++        sMenuButton =
++            [[HarkinianPadTouchButton alloc] initWithLabel:@"•••" scancode:SDL_SCANCODE_ESCAPE pill:NO];
++        sMenuButton.accessibilityLabel = @"Menu";
++        sMenuButton.titleLabel.font =
++            [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
++        [sMenuButton
++            applyIdleColor:[UIColor colorWithWhite:0.04 alpha:0.42]
++              pressedColor:[UIColor colorWithWhite:0.72 alpha:0.62]];
++        sMenuButton.autoresizingMask =
++            UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
 +    }
 +
++    const CGFloat size = 38.0;
++    const UIEdgeInsets safe = window.safeAreaInsets;
++    sMenuButton.frame =
++        CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0,
++                   safe.top + 76.0, size, size);
++    if (sMenuButton.superview != window) {
++        [sMenuButton removeFromSuperview];
++        [window addSubview:sMenuButton];
++    }
++    [window bringSubviewToFront:sMenuButton];
++}
++
++static void HarkinianPad_ApplyTouchControlsState(void) {
 +    UIWindow* window = HarkinianPad_ActiveWindow();
 +    if (window == nil) {
 +        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
 +                       dispatch_get_main_queue(), ^{
 +                           HarkinianPad_ApplyTouchControlsState();
 +                       });
++        return;
++    }
++
++    HarkinianPad_InstallMenuButton(window);
++    if (!sTouchControlsDesired || sTouchControlsMenuVisible.load()) {
++        [sTouchOverlay cancelAllInputs];
++        [sTouchOverlay removeFromSuperview];
++        sTouchOverlay = nil;
 +        return;
 +    }
 +
@@ -510,6 +534,7 @@ index 000000000..684920368
 +        [window addSubview:sTouchOverlay];
 +    }
 +    [window bringSubviewToFront:sTouchOverlay];
++    [window bringSubviewToFront:sMenuButton];
 +}
 +
 +int HarkinianPad_TouchControlsAvailable(void) {

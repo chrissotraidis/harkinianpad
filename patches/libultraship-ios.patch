@@ -331,10 +331,19 @@ index 8cc5b12e..b24d7ad7 100644
      int32_t channelsSetting =
          mConfig->GetInt("CVars." CVAR_AUDIO_CHANNELS_SETTING, static_cast<int32_t>(AudioChannelsSetting::audioMax));
 diff --git a/src/ship/audio/SDLAudioPlayer.cpp b/src/ship/audio/SDLAudioPlayer.cpp
-index d9f1e44d..4ea83a08 100644
+index d9f1e44d..e0e601c3 100644
 --- a/src/ship/audio/SDLAudioPlayer.cpp
 +++ b/src/ship/audio/SDLAudioPlayer.cpp
-@@ -53,8 +53,19 @@ int SDLAudioPlayer::Buffered() {
+@@ -23,5 +23,8 @@
+ bool SDLAudioPlayer::DoInit() {
++#ifdef __IOS__
++    SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
++#endif
+     if (SDL_Init(SDL_INIT_AUDIO) != 0) {
+         SPDLOG_ERROR("SDL init error: {}", SDL_GetError());
+         return false;
+     }
+@@ -53,8 +56,19 @@ int SDLAudioPlayer::Buffered() {
      return SDL_GetQueuedAudioSize(mDevice) / (sizeof(int16_t) * mNumChannels);
  }
  

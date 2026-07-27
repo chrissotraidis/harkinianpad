@@ -49,6 +49,13 @@ if codesign --verify --strict "$APP" >/dev/null 2>&1 &&
     signature_state="signed"
 fi
 
+if [ "$signature_state" = "unsigned" ] &&
+   { [ -d "$APP/_CodeSignature" ] || [ -f "$APP/embedded.mobileprovision" ]; }; then
+    echo "Refusing unsigned app containing stale signing material: $APP" >&2
+    echo "Rebuild with scripts/build-ios.sh --device before packaging." >&2
+    exit 1
+fi
+
 if [ "${REQUIRE_SIGNED:-0}" = "1" ] && [ "$signature_state" != "signed" ]; then
     echo "REQUIRE_SIGNED=1, but the app lacks a valid device signature/profile." >&2
     exit 1

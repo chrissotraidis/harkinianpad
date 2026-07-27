@@ -24,22 +24,24 @@ ornament.
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│                                                              │
+│                                                    [•••]     │
 │                                                              │
 │  [ L ] [ Z ]                               [Start] [ R ]      │
-│    ( spaced D-pad )                         ( B ) ( Z )        │
-│                                                 ( A ) [menu]   │
-│      ( control stick )                    ( compact C diamond )│
+│  (small D-pad)                               ( B ) ( Z )       │
+│       ( control stick )                         ( A )          │
+│                                            (small C diamond)   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- Every control begins in the lower half of a landscape iPad.
-- L/Z and Start/R sit at roughly 38% height, within reach while holding the
-  side edges.
-- The spaced D-pad and A/B/Z cluster sit at roughly 60% height.
-- The menu toggle stays on the outer-right rail between the face and C groups.
-- The control stick and spaced C-button diamond share a low thumb line at
-  roughly 86% height.
+- Gameplay controls stay in the lower half of a landscape iPad.
+- L/Z and Start/R sit below the menu content line, within reach while holding
+  the side edges.
+- The compact D-pad sits left of the raised control stick.
+- A/B/Z form a separate right-side triangle; the smaller C-button diamond sits
+  directly below it.
+- The 38-point persistent `•••` menu button sits at the upper-right safe area,
+  below Shipwright's menu divider. It remains available when gameplay touch
+  controls are disabled.
 - Z is intentionally duplicated in the left shoulder row and right face
   cluster; both copies emit the same binding.
 - iPhone uses the same relationships at a smaller scale.
@@ -79,6 +81,8 @@ for final gameplay feel.
 - Opening the Shipwright menu temporarily removes the gameplay overlay and
   releases held input; closing the menu restores it only when the persisted
   Touch Controls setting remains enabled.
+- The independent `•••` button stays installed in either state so disabling
+  gameplay controls never strands the user outside Settings.
 
 ## Styling
 
@@ -86,8 +90,8 @@ for final gameplay feel.
 - Two-point light border with white labels.
 - Circular thumb and face controls; compact pills for shoulders.
 - N64-inspired hierarchy: blue A, green B, red Start, and amber C buttons.
-- Primary A/B buttons are 72 points at base scale; D-pad buttons are 58,
-  C buttons are 54, the menu is 50, and the stick is 150. The smaller
+- Primary A/B/Z buttons are 66 points at base scale; D-pad buttons are 52,
+  C buttons are 46, the menu is 38, and the stick is 150. The smaller
   secondary controls preserve clear gaps between groups.
 - A brighter fill while pressed.
 - No textures, custom assets, haptics, editor, or resize system.
@@ -108,5 +112,7 @@ for final gameplay feel.
    A/B/Z.
 9. The physical-controller path and ROM-free package audit are unchanged.
 
-Physical-iPad grip, simultaneous multi-touch feel, and obscured-content review
-remain hardware acceptance checks.
+The core grip layout, navigation, gameplay inputs, menu access, and live toggle
+were accepted on a 12.9-inch iPad Pro (6th generation). Extended simultaneous
+multi-touch stress, iPhone sizing, and physical-controller gameplay remain
+hardware acceptance checks.

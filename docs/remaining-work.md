@@ -79,9 +79,10 @@ Expected:
    a separate human check.
 
 M3's subjective audio check and M4's physical MFi/Bluetooth controller
-playtest remain open hardware gates. M5's final no-desktop physical Files move
-also remains open. Safe implementation work continues on M6 without treating
-Simulator evidence as physical-device proof.
+playtest remain open hardware gates. M5 is complete after the physical Files
+move, local archive boot, and gameplay replay recorded below. Safe
+implementation work continues on M6 without treating Simulator evidence as
+physical-device proof.
 
 ## Evidence log
 
@@ -825,6 +826,8 @@ Simulator evidence as physical-device proof.
 
 - GitHub Actions runs `30144805162` and `30144802099` never started a runner.
   GitHub reported failed account payments or a spending-limit requirement.
-  This is an external pre-start block, not build evidence.
-- Physical-device, signing, subjective audio, and controller gates remain
-  untested.
+  Those historical runs are external pre-start blocks, not build evidence.
+- Signed physical-device installation, Files import, touch gameplay, and save
+  loading now have evidence above. Audible physical-device audio, the complete
+  lifecycle/interruption matrix, distribution signing, and physical-controller
+  behavior remain open.

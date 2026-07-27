@@ -58,7 +58,7 @@ belong to HarkinianPad.
 | 2 | Metal renders a frame | Complete | Runtime capture/log from Simulator or device with user-provided archives |
 | 3 | Stable title screen with audio and usable UI | In progress | Runtime, audio, scaling, and stability checks |
 | 4 | Playable with MFi/Bluetooth controller | Pending | Physical controller playtest and supported capability results |
-| 5 | Files import and on-device extraction | In progress | Clean-container ROM import through successful archive generation and boot |
+| 5 | Files import and on-device extraction | Complete | Physical-iPad Files import through successful archive generation and boot |
 | 6 | Lifecycle and persistence are correct | In progress | Suspend/resume/kill, interruption, settings, and save matrix |
 | 7 | Signed, installable, reproducible package | In progress | Device installation plus complete build/package documentation |
 
@@ -84,6 +84,27 @@ also remains open. Safe implementation work continues on M6 without treating
 Simulator evidence as physical-device proof.
 
 ## Evidence log
+
+### 2026-07-27 — Signed physical-iPad install, Files import, touch gameplay, and save loading passed
+
+- Hardware: a signed arm64 build was installed and launched on a 12.9-inch
+  iPad Pro (6th generation) running iPadOS 26.5.2.
+- Files setup: a locally supplied supported Ocarina of Time ROM was moved into
+  the app's Files-visible Documents folder. HarkinianPad loaded the resulting
+  local `oot.o2r` and reached active gameplay without bundling either input in
+  the app.
+- Touch: Start, navigation, gameplay, the analog control, D-pad, A/B/Z,
+  shoulders, C buttons, and the persistent `•••` menu path were exercised on
+  hardware. Disabling Touch Controls no longer strands the user because the
+  menu button remains available independently.
+- Saves and updates: file selection and gameplay saves loaded successfully.
+  Repeated in-place app installation preserved the Documents container; save
+  files copied back from the device matched their expected hashes.
+- Runtime logging: the physical app initialized its SDL audio device as stereo
+  at 32 kHz and continued through file loading and multiple scene transitions.
+- Remaining boundary: audible speaker output was not heard during the test and
+  remains an active defect. No physical game controller was available, so
+  reconnect, rumble, motion, and sustained controller gameplay remain open.
 
 ### 2026-07-26 — Touch spacing and external input defaults passed in Simulator
 

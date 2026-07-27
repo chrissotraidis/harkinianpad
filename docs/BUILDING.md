@@ -122,7 +122,7 @@ L/Z, a separate four-button D-pad, and a low control stick. The right rail has
 Start/R, an A/B/Z cluster, a menu button, and a separate low four-button
 C diamond. The duplicated Z control keeps the trigger reachable from either
 grip. Empty overlay space passes through to the game and menus. Open the menu
-with **☰**; the gameplay overlay disappears while the menu is visible and
+with **•••**; the gameplay overlay disappears while the menu is visible and
 returns when the menu closes. Turn it off or back on entirely under
 **Settings > Controls > Touch Controls**.
 

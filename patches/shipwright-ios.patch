@@ -744,7 +744,7 @@ index 3cda26a82..e67aa4101 100644
  #endif
  }
 diff --git a/soh/soh/SohGui/Menu.cpp b/soh/soh/SohGui/Menu.cpp
-index 42227d7f9..b9fe8687e 100644
+index 42227d7f9..a9a9aa02e 100644
 --- a/soh/soh/SohGui/Menu.cpp
 +++ b/soh/soh/SohGui/Menu.cpp
 @@ -793,7 +793,7 @@ void Menu::DrawElement() {
@@ -756,6 +756,63 @@ index 42227d7f9..b9fe8687e 100644
                         " (Command-R)"
  #elif !defined(__SWITCH__) && !defined(__WIIU__)
                         " (Ctrl+R)"
+@@ -802,9 +802,14 @@ void Menu::DrawElement() {
+ #endif
+         ;
+     if (UIWidgets::Button(ICON_FA_UNDO, options2)) {
+-        std::reinterpret_pointer_cast<Ship::ConsoleWindow>(
+-            Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))
+-            ->Dispatch("reset");
++        SohGui::mModalWindow->RegisterPopup(
++            "Reset Game", "Reset the game now? Any unsaved progress will be lost.", "Reset", "Cancel",
++            []() {
++                std::reinterpret_pointer_cast<Ship::ConsoleWindow>(
++                    Ship::Context::GetRawInstance()->GetWindow()->GetGui()->GetGuiWindow("Console"))
++                    ->Dispatch("reset");
++            },
++            nullptr);
+     }
+     ImGui::SameLine();
+     UIWidgets::ButtonOptions options = {};
+@@ -834,9 +839,13 @@ void Menu::DrawElement() {
+ 
+     // Increase sidebar width on larger screens to accomodate people scaling their menus.
+     float sidebarWidth = 200 - style.ItemSpacing.x;
++#ifdef __IOS__
++    sidebarWidth = 240 - style.ItemSpacing.x;
++#else
+     if (menuSize.x > 1600) {
+         sidebarWidth = menuSize.x * 0.15f;
+     }
++#endif
+ 
+     const char* sidebarCvar = menuEntries.at(headerIndex).sidebarCvar;
+ 
+@@ -883,9 +892,15 @@ void Menu::DrawElement() {
+     std::string sectionMenuId = sectionIndex + " Settings";
+     size_t columns = sidebar->at(sectionIndex).columnCount;
+     size_t columnFuncs = sidebar->at(sectionIndex).columnWidgets.size();
++#ifdef __IOS__
++    if ((sectionWidth - style.ItemSpacing.x * columns) / columns < 720.0f) {
++        columns = 1;
++    }
++#else
+     if (windowWidth < 800) {
+         columns = 1;
+     }
++#endif
+     float columnWidth = (sectionWidth - style.ItemSpacing.x * columns) / columns;
+     bool useColumns = columns > 1;
+     if (!useColumns || (headerSearch && menuSearchText.length() > 0)) {
+@@ -933,7 +948,7 @@ void Menu::DrawElement() {
+             }
+             // for (auto& entryName : sidebar->at(sectionIndex).sidebarOrder) {
+             for (auto& entry : sidebar->at(sectionIndex).columnWidgets.at(i)) {
+-                MenuDrawItem(entry, 90 / sidebar->at(sectionIndex).columnCount, menuThemeIndex);
++                MenuDrawItem(entry, 90 / columns, menuThemeIndex);
+             }
+             //}
+             if (useColumns) {
 diff --git a/soh/soh/SohGui/ResolutionEditor.cpp b/soh/soh/SohGui/ResolutionEditor.cpp
 index fc7323e8b..5249a1634 100644
 --- a/soh/soh/SohGui/ResolutionEditor.cpp

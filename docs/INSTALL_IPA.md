@@ -1,10 +1,15 @@
 # Install the HarkinianPad developer preview
 
-The planned HarkinianPad download is an unsigned developer-preview IPA. It is
-not an App Store or TestFlight build. AltStore Classic re-signs it with your
-Apple ID for your own iPhone or iPad.
+The HarkinianPad download is an unsigned developer-preview IPA. It is not an
+App Store or TestFlight build. AltStore Classic re-signs it with your Apple ID
+for your own iPhone or iPad.
 
 The IPA does not include Ocarina of Time, a ROM, or generated game data.
+
+[Download HarkinianPad 0.1.0 developer preview](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.1/HarkinianPad-0.1.0-preview.1-unsigned.ipa)
+
+SHA-256:
+`579baae716361cd34430fee21f0c82755b2d874d1de23723f36f60f1264ef541`
 
 ## Install
 
@@ -15,8 +20,8 @@ The IPA does not include Ocarina of Time, a ROM, or generated game data.
 2. Trust the computer and your Apple ID on the device when prompted. On iOS or
    iPadOS 16 and later, enable **Settings → Privacy & Security → Developer
    Mode**.
-3. Download the HarkinianPad `-unsigned.ipa` from the GitHub prerelease to the
-   Files app.
+3. Download the HarkinianPad `-unsigned.ipa` using the link above and save it
+   to the Files app.
 4. Keep AltServer running on the computer. Connect the device by USB, or keep
    both devices on the same Wi-Fi network.
 5. Open AltStore Classic, choose **My Apps**, tap **+**, select the downloaded

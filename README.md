@@ -1,7 +1,7 @@
 # HarkinianPad
 
 <p align="center">
-  <strong>Ship of Harkinian, rebuilt for iPhone and iPad.</strong><br>
+  <strong>Ocarina of Time via Ship of Harkinian, rebuilt for iPhone and iPad.</strong><br>
   Native Metal rendering, touch controls, Files-based setup, and support for
   keyboards, pointing devices, and iOS game controllers.
 </p>

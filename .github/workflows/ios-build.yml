@@ -45,7 +45,7 @@ jobs:
       - name: Install host archive-build dependencies
         run: >-
           brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng
-          libzip tinyxml2 libogg libvorbis opus opusfile
+          libzip tinyxml2 libogg libvorbis opus opusfile sdl2_net
 
       - name: Cache host and iOS dependencies
         uses: actions/cache@v6

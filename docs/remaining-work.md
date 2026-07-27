@@ -56,7 +56,7 @@ belong to HarkinianPad.
 | 0 | Trackable, reproducible source inputs | Complete | Clean bootstrap resolves all pinned upstream revisions and asset ignores |
 | 1 | Full Shipwright iOS product configures and links | Complete | Unsigned Xcode build succeeds for a concrete iOS destination |
 | 2 | Metal renders a frame | Complete | Runtime capture/log from Simulator or device with user-provided archives |
-| 3 | Stable title screen with audio and usable UI | In progress | Runtime, audio, scaling, and stability checks |
+| 3 | Stable title screen with audio and usable UI | Complete | Repeated physical-iPad gameplay with audible output and accepted touch UI |
 | 4 | Playable with MFi/Bluetooth controller | Pending | Physical controller playtest and supported capability results |
 | 5 | Files import and on-device extraction | Complete | Physical-iPad Files import through successful archive generation and boot |
 | 6 | Lifecycle and persistence are correct | In progress | Suspend/resume/kill, interruption, settings, and save matrix |
@@ -78,13 +78,47 @@ Expected:
    do not crash or permanently mute the app; subjective audio quality remains
    a separate human check.
 
-M3's subjective audio check and M4's physical MFi/Bluetooth controller
-playtest remain open hardware gates. M5 is complete after the physical Files
-move, local archive boot, and gameplay replay recorded below. Safe
-implementation work continues on M6 without treating Simulator evidence as
+M3 is complete after repeated physical-iPad gameplay with audible output.
+M4's physical MFi/Bluetooth controller playtest remains open. M5 is complete
+after the physical Files move, local archive boot, and gameplay replay
+recorded below. Route-change and interruption recovery remain part of M6;
+safe implementation work continues without treating Simulator evidence as
 physical-device proof.
 
 ## Evidence log
+
+### 2026-07-27 — Unsigned developer-preview packaging path passed locally
+
+- The canonical `scripts/build-ios.sh --device` replay completed with
+  `** BUILD SUCCEEDED **` on Xcode 26.6 and the iPhoneOS 26.5 SDK. The output
+  is a single arm64 iOS binary with minimum OS 14.0.
+- The app reports bundle identifier `com.chrissotraidis.harkinianpad`,
+  HarkinianPad version `0.1.0`, and build number `1`, independently of the
+  pinned Shipwright source version.
+- `scripts/package-ios.sh` produced the 29 MB ROM-free artifact
+  `artifacts/HarkinianPad-0.1.0-preview.1-unsigned.ipa`, SHA-256
+  `579baae716361cd34430fee21f0c82755b2d874d1de23723f36f60f1264ef541`.
+  Its payload contains the app, Info.plist, and ROM-free `soh.o2r`, with no
+  ROM, `oot.o2r`, `_CodeSignature`, or `embedded.mobileprovision`.
+- `REQUIRE_SIGNED=1 scripts/package-ios.sh` rejected the unsigned app as
+  required. The attached paired iPad is available and has the existing
+  HarkinianPad bundle installed, but neither AltStore Classic on the iPad nor
+  AltServer in the Mac's standard Applications folders is present. Re-signing
+  and updating from this exact IPA therefore remains the final manual
+  developer-preview distribution gate.
+- This work is isolated on `codex/developer-preview-ipa` from base commit
+  `e8d99cded9c8925b4cba6d61cd86c676308c1366`; it was not pushed, tagged,
+  released, or merged.
+
+### 2026-07-27 — Audible physical-iPad gameplay accepted
+
+- The maintainer confirmed audible game output across repeated physical-iPad
+  playtests with no recurring audio defect.
+- This supersedes the earlier same-day observation below in which one session
+  produced no audible output. That result was not reproduced and is not a
+  current release blocker.
+- Speaker playback is accepted for the developer preview. Headphone/Bluetooth
+  route changes and a real interruption remain separate M6 hardware checks.
 
 ### 2026-07-27 — Signed physical-iPad install, Files import, touch gameplay, and save loading passed
 
@@ -828,6 +862,6 @@ physical-device proof.
   GitHub reported failed account payments or a spending-limit requirement.
   Those historical runs are external pre-start blocks, not build evidence.
 - Signed physical-device installation, Files import, touch gameplay, and save
-  loading now have evidence above. Audible physical-device audio, the complete
-  lifecycle/interruption matrix, distribution signing, and physical-controller
-  behavior remain open.
+  loading now have evidence above. Audible physical-device gameplay is also
+  accepted. The complete lifecycle/route/interruption matrix, public preview
+  re-sign/install replay, and physical-controller behavior remain open.

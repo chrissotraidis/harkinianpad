@@ -63,7 +63,16 @@ fi
 
 version="$(/usr/libexec/PlistBuddy \
     -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
-output="${2:-$ROOT/artifacts/HarkinianPad-${version}-${signature_state}.ipa}"
+build_number="$(/usr/libexec/PlistBuddy \
+    -c 'Print :CFBundleVersion' "$APP/Info.plist")"
+bundle_id="$(/usr/libexec/PlistBuddy \
+    -c 'Print :CFBundleIdentifier' "$APP/Info.plist")"
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+   [[ ! "$build_number" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Refusing app with invalid release version: $version ($build_number)" >&2
+    exit 1
+fi
+output="${2:-$ROOT/artifacts/HarkinianPad-${version}-preview.${build_number}-${signature_state}.ipa}"
 if [[ "$output" != /* ]]; then
     output="$ROOT/$output"
 fi
@@ -88,7 +97,9 @@ if grep -Eiq '\.(z64|n64|v64|rom)$|Payload/.*/oot(-mq)?\.o2r$|\.otr$' \
     exit 1
 fi
 
-echo "Packaged ${signature_state} HarkinianPad IPA: $output"
+echo "Packaged ${signature_state} HarkinianPad ${version} (${build_number})"
+echo "Bundle identifier: $bundle_id"
+echo "IPA: $output"
 shasum -a 256 "$output"
 if [ "$signature_state" != "signed" ]; then
     echo "This proof artifact is not installable on a standard device until signed."

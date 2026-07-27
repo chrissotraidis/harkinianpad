@@ -31,7 +31,7 @@ ROM-derived archive.
 
 | Option | Status | What to do |
 |---|---|---|
-| Downloadable `.ipa` | **Coming soon** | No official download is available yet. It will still require a compatible personal-signing or sideload workflow. |
+| Developer-preview `.ipa` | **Coming soon** | The planned download will be unsigned and must be re-signed with your Apple ID before installation. |
 | Local iPad build | **Available now** | Build and sign with your Apple development team using the instructions below. |
 | Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
 | App Store / TestFlight | **Not announced** | No listing or public TestFlight currently exists. |
@@ -41,12 +41,10 @@ The current development build has been signed, installed, and played on a
 on-device archive loading, touch gameplay, save loading, the settings menu,
 and in-place app updates have all been exercised on that hardware.
 
-Two gates remain intentionally explicit:
-
-- SDL reports a working audio device, but audible physical-device output is
-  still being investigated.
-- The iOS controller path is present, but the physical controller,
-  disconnect/reconnect, rumble, and motion matrix has not been completed.
+Audio has been heard during repeated physical-iPad playtests. Headphone,
+Bluetooth, and interruption recovery still need a complete device matrix. The
+iOS controller path is present, but physical controller reconnect, rumble, and
+motion testing is also incomplete.
 
 ## Get started
 
@@ -61,7 +59,7 @@ Install the build dependencies:
 
 ```sh
 brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng libzip \
-  tinyxml2 libogg libvorbis opus opusfile
+  tinyxml2 libogg libvorbis opus opusfile sdl2_net
 ```
 
 Clone and build:
@@ -91,7 +89,9 @@ If Xcode needs to register the device or create a provisioning profile, open
 choose your team under **Signing & Capabilities**.
 
 See [`docs/BUILDING.md`](docs/BUILDING.md) for the complete Simulator,
-signing, installation, controller, and package-audit workflow.
+signing, installation, controller, and package-audit workflow. When the first
+developer-preview IPA is published, [`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md)
+is the short AltStore Classic installation guide.
 
 Before publishing or sharing a build, follow the
 [`release checklist`](docs/RELEASE_CHECKLIST.md).
@@ -202,25 +202,31 @@ revisions, disables their push URLs, applies the maintained patches, generates
 Shipwright's ROM-free `soh.o2r`, and builds the app. Your ROM is introduced
 only after installation.
 
-Before installing or sharing a local device build, run:
+To create the unsigned, re-signable developer-preview package, run:
 
 ```sh
-REQUIRE_SIGNED=1 scripts/package-ios.sh
+scripts/package-ios.sh
 ```
 
-The audit rejects Simulator products, missing signing/provisioning, original
-ROMs, ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data in the app
-package.
+The default preview identity is HarkinianPad `0.1.0`, build `1`, with bundle
+identifier `com.chrissotraidis.harkinianpad`. The package is named
+`HarkinianPad-0.1.0-preview.1-unsigned.ipa`. It contains no maintainer
+certificate or provisioning profile; a sideload tool such as AltStore Classic
+must re-sign it for the installer's device.
+
+The audit rejects Simulator products, stale signing material, original ROMs,
+ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data. For a local
+maintainer-signed package, use `REQUIRE_SIGNED=1 scripts/package-ios.sh`.
 
 ## Frequently asked questions
 
 <details>
 <summary><strong>Where is the IPA?</strong></summary>
 
-A downloadable IPA is coming soon. The current repository supports local
-Xcode builds, but no official public binary is available yet. An IPA does not
-remove Apple's signing requirements; installation will still need a compatible
-personal-signing or sideload workflow.
+A re-signable developer-preview IPA is coming soon. No official download is
+available yet. The preview will not be an App Store or TestFlight build; follow
+the [AltStore Classic guide](docs/INSTALL_IPA.md) to sign the IPA with your own
+Apple ID.
 </details>
 
 <details>
@@ -231,11 +237,11 @@ issues requesting game data or download links.
 </details>
 
 <details>
-<summary><strong>Why can I see the game but not hear it?</strong></summary>
+<summary><strong>Does audio work?</strong></summary>
 
-The SDL audio backend initializes on iPad, but audible physical-device output
-is still an active investigation. The README will not claim working speaker,
-headphone, or Bluetooth audio until those paths are physically verified.
+Yes. Audio has been heard during repeated physical-iPad gameplay sessions.
+Speaker playback is accepted for the developer preview; headphone, Bluetooth,
+and interruption recovery remain additional hardware checks.
 </details>
 
 <details>
@@ -256,9 +262,10 @@ support still require model-specific verification.
 <details>
 <summary><strong>Is this an App Store or TestFlight release?</strong></summary>
 
-No. A downloadable IPA is planned first. App Store, TestFlight, AltStore PAL,
-and SideStore distribution each have separate signing, review, account, and
-regional requirements.
+No. The first downloadable build is planned as an unsigned developer-preview
+IPA for personal re-signing. App Store, TestFlight, AltStore PAL, and SideStore
+distribution are separate projects with different signing, review, account,
+and regional requirements.
 </details>
 
 <details>
@@ -276,10 +283,11 @@ redistributable open source without resolving that boundary.
 | Path | Purpose |
 |---|---|
 | [`scripts/build-ios.sh`](scripts/build-ios.sh) | Complete Simulator or device build |
-| [`scripts/package-ios.sh`](scripts/package-ios.sh) | Signed-package and game-data audit |
+| [`scripts/package-ios.sh`](scripts/package-ios.sh) | Unsigned/signed IPA and game-data audit |
 | [`scripts/check-repo-safety.sh`](scripts/check-repo-safety.sh) | Fast tracked-asset, history, patch, script, and documentation gate |
 | [`patches/`](patches/) | HarkinianPad changes replayed onto pinned upstream source |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Full build, signing, installation, and testing guide |
+| [`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md) | Developer-preview IPA installation with AltStore Classic |
 | [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | Source and IPA publication gates |
 | [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout and input contract |
 | [`docs/remaining-work.md`](docs/remaining-work.md) | Evidence ledger and remaining gates |

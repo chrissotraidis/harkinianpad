@@ -18,8 +18,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/sources/Shipwright"
 DEPLOYMENT_TARGET="${DEPLOYMENT_TARGET:-14.0}"   # LUS CI value; real floor TBD (open question Q10)
-BUNDLE_ID="${BUNDLE_ID:-com.example.harkinianpad}"
+BUNDLE_ID="${BUNDLE_ID:-com.chrissotraidis.harkinianpad}"
+HARKINIANPAD_VERSION="${HARKINIANPAD_VERSION:-0.1.0}"
+HARKINIANPAD_BUILD_NUMBER="${HARKINIANPAD_BUILD_NUMBER:-1}"
 IOS_PLATFORM="${IOS_PLATFORM:-OS64COMBINED}"
+
+if [[ ! "$HARKINIANPAD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "HARKINIANPAD_VERSION must use numeric major.minor.patch form." >&2
+    exit 2
+fi
+if [[ ! "$HARKINIANPAD_BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+    echo "HARKINIANPAD_BUILD_NUMBER must be a positive integer." >&2
+    exit 2
+fi
 
 if [ ! -d "$SRC" ]; then
     echo "sources/Shipwright not found — run scripts/clone-sources.sh first." >&2
@@ -52,7 +63,9 @@ set -- cmake -Wno-unused-cli \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DENABLE_SCRIPTING=OFF \
     -DPLATFORM="$IOS_PLATFORM" \
-    -DBUNDLE_ID="$BUNDLE_ID"
+    -DBUNDLE_ID="$BUNDLE_ID" \
+    -DHARKINIANPAD_VERSION="$HARKINIANPAD_VERSION" \
+    -DHARKINIANPAD_BUILD_NUMBER="$HARKINIANPAD_BUILD_NUMBER"
 
 if [ -n "${DEVELOPMENT_TEAM:-}" ]; then
     set -- "$@" \

@@ -21,7 +21,7 @@ port archive:
 
 ```sh
 brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng libzip \
-  tinyxml2 libogg libvorbis opus opusfile
+  tinyxml2 libogg libvorbis opus opusfile sdl2_net
 ```
 
 ## Clean-machine build
@@ -61,7 +61,32 @@ cmake --build build-ios-soh --target soh --config Release -- \
 
 The unsigned device product is
 `build-ios-soh/soh/Release-iphoneos/HarkinianPad.app`. It is a compile and
-package-safety proof, not an installable standard-device build.
+package-safety proof. It can be wrapped as a developer-preview IPA and
+re-signed by the installer, but it is not directly installable on a standard
+device.
+
+## Preview identity and version
+
+HarkinianPad's app version is intentionally independent of the pinned
+Shipwright source version. The defaults are:
+
+| Field | Value |
+|---|---|
+| App version | `0.1.0` |
+| Build number | `1` |
+| Bundle identifier | `com.chrissotraidis.harkinianpad` |
+
+For a later preview, increment the build number without changing the app
+version:
+
+```sh
+HARKINIANPAD_BUILD_NUMBER=2 scripts/build-ios.sh --device
+```
+
+Use `HARKINIANPAD_VERSION` only for a deliberate app-version change. It must
+have numeric `major.minor.patch` form, and the build number must be a positive
+integer. Keep the bundle identifier stable so a re-signed update can preserve
+the existing app container.
 
 To build the arm64 Simulator product:
 
@@ -97,23 +122,39 @@ personal team is suitable for local testing but has shorter provisioning
 validity; paid-team distribution and TestFlight have separate Apple
 requirements.
 
-Before installation or sharing, package and audit the built app:
+To create the unsigned developer-preview IPA:
+
+```sh
+scripts/package-ios.sh
+```
+
+The default output is
+`artifacts/HarkinianPad-0.1.0-preview.1-unsigned.ipa`. It is deliberately
+unsigned so AltStore Classic or another compatible personal-signing tool can
+re-sign it for the installer's device.
+
+For a local app that was already signed by Xcode, require valid signing and an
+embedded provisioning profile:
 
 ```sh
 REQUIRE_SIGNED=1 scripts/package-ios.sh
 ```
 
-The command refuses Simulator products, missing provisioning, ROMs,
+Both modes refuse Simulator products, stale signing material, ROMs,
 ROM-derived `oot*.o2r`/`.otr` data, or a `soh.o2r` containing prohibited
-inputs. It writes an ignored IPA under `artifacts/` and prints its SHA-256.
-Without `REQUIRE_SIGNED=1`, it may create a clearly labeled unsigned IPA for
-reproducibility testing only.
+inputs. The script writes an ignored IPA under `artifacts/` and prints its
+bundle identifier, version, build number, and SHA-256.
 
 Install the signed `.app` from Xcode's Devices and Simulators window, or the
 signed IPA with a compatible personal-signing/sideload tool. TestFlight,
 AltStore PAL, and SideStore are distinct distribution paths with their own
 account, region, review, and provisioning constraints; a successful local
 build does not prove any of them.
+
+For the planned public developer preview, follow
+[`INSTALL_IPA.md`](INSTALL_IPA.md). Never publish a locally signed IPA: it
+contains the maintainer's provisioning material and is not the re-signable
+release artifact.
 
 ## Touch and controller playtest
 

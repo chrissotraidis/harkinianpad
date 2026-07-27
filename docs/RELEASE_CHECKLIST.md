@@ -14,32 +14,48 @@ This is the final gate for a public source snapshot or downloadable IPA.
       signed app, or IPA appears in the current tree or Git history.
 - [ ] Remaining physical-device limitations are stated plainly.
 
-## Before publishing a downloadable IPA
+## Before publishing an unsigned developer-preview IPA
 
 - [ ] The owner has selected and documented licensing terms for
       HarkinianPad-owned work and confirmed the Shipwright distribution
       boundary.
 - [ ] Build from a clean checkout at a tagged commit.
-- [ ] Use a deliberate distribution bundle identifier and fresh signing
-      identity/profile.
-- [ ] `REQUIRE_SIGNED=1 scripts/package-ios.sh` passes on the exact app being
-      distributed.
-- [ ] Record the tag, commit, Xcode version, SDK, bundle version, signing type,
-      IPA SHA-256, and supported device/OS range in the release notes.
-- [ ] Install the packaged IPA on clean physical hardware and complete Files
-      import, extraction, save/load, touch, background/foreground, termination,
-      relaunch, speaker audio, and controller checks.
+- [ ] Use the stable bundle identifier
+      `com.chrissotraidis.harkinianpad`.
+- [ ] Set a deliberate app version and monotonically increasing build number.
+- [ ] Build without `DEVELOPMENT_TEAM`, then run `scripts/package-ios.sh`.
+- [ ] Confirm `REQUIRE_SIGNED=1 scripts/package-ios.sh` rejects that unsigned
+      app and that the IPA contains no `_CodeSignature` or
+      `embedded.mobileprovision`.
 - [ ] Confirm the IPA contains only the ROM-free `soh.o2r`; it must never
       contain the user's ROM or generated `oot.o2r`.
-- [ ] Publish known limitations, installation/signing requirements, and a
-      rollback path.
+- [ ] Re-sign and install the exact IPA with AltStore Classic on a physical
+      iPad, then replay launch, audio, touch, Files import, extraction, and
+      save/load without deleting the previous installation.
+- [ ] Record the tag, commit, Xcode version, SDK, app version, build number,
+      unsigned IPA SHA-256, and supported device/OS range in release notes.
+- [ ] Publish the IPA as a GitHub prerelease with
+      [`INSTALL_IPA.md`](INSTALL_IPA.md), known limitations, and an explicit
+      statement that no ROM or game data is included.
+
+## Before publishing a maintainer-signed build
+
+- [ ] Use a deliberate distribution identity and fresh provisioning profile.
+- [ ] `REQUIRE_SIGNED=1 scripts/package-ios.sh` passes on the exact app.
+- [ ] Install the packaged IPA on clean physical hardware and complete the
+      full lifecycle, route/interruption, and controller matrix.
+- [ ] Record the signing type without publishing certificates, profiles, or
+      other signing material.
 
 ## Current blockers
 
-- Audible physical-device audio is still under investigation.
+- The exact unsigned preview IPA has not yet completed an AltStore Classic
+  re-sign/install/update replay.
 - Physical controller, reconnect, rumble, and motion testing is incomplete.
 - The complete lifecycle/interruption matrix remains open.
 - No top-level HarkinianPad license has been selected.
 
-Until those gates are resolved, describe this repository as a public source
-preview with local Xcode installation—not a finished binary distribution.
+Controller and lifecycle gaps may be published as explicit developer-preview
+limitations. Licensing and the exact-package AltStore replay must be resolved
+before attaching a public IPA. Until then, describe this repository as a
+public source preview with local Xcode installation.

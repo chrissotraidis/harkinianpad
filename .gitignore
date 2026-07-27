@@ -21,6 +21,14 @@ DerivedData/
 *.ipa
 *.app
 
+# --- Apple signing material / private keys ---
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.p8
+*.pem
+*.key
+
 # --- Xcode / macOS ---
 xcuserdata/
 *.xcuserstate

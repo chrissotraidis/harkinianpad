@@ -38,6 +38,11 @@ fi
 
 "$ROOT/scripts/configure-ios.sh" --soh
 
+# A previous signed build can leave a profile and _CodeSignature inside the
+# product directory. Remove only the generated app before an unsigned or
+# differently signed rebuild so no stale signing material survives.
+rm -rf "$ROOT/build-ios-soh/soh/Release-iphoneos/HarkinianPad.app"
+
 set -- cmake --build "$ROOT/build-ios-soh" --target soh --config Release -- \
     -destination generic/platform=iOS
 if [ -z "${DEVELOPMENT_TEAM:-}" ]; then

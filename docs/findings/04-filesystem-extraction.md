@@ -1,6 +1,7 @@
 # 04 — Filesystem/Sandbox Behavior & On-Device Asset Extraction (SoH + LUS, iOS feasibility)
 
-Trees examined (all paths below are absolute; `SCRATCH` = `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad`):
+Trees examined (`SCRATCH` is used below only as a stable label for the
+disposable investigation workspace):
 - `SCRATCH/lus` — libultraship main (HEAD a3f1e102, 2026-06-12)
 - `SCRATCH/lus-pinned` — libultraship at SoH's pinned commit (HEAD 2bfbde3a, 2026-07-21)
 - `SCRATCH/soh` — Ship of Harkinian main

@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/chrissotraidis/harkinianpad/actions/workflows/ios-build.yml"><img alt="HarkinianPad iOS build" src="https://github.com/chrissotraidis/harkinianpad/actions/workflows/ios-build.yml/badge.svg"></a>
   <img alt="iOS 14+" src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-14%2B-0A84FF?logo=apple">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
   <img alt="Physical iPad tested" src="https://img.shields.io/badge/physical%20iPad-tested-30D158">
@@ -91,6 +92,9 @@ choose your team under **Signing & Capabilities**.
 
 See [`docs/BUILDING.md`](docs/BUILDING.md) for the complete Simulator,
 signing, installation, controller, and package-audit workflow.
+
+Before publishing or sharing a build, follow the
+[`release checklist`](docs/RELEASE_CHECKLIST.md).
 
 ## First launch
 
@@ -273,14 +277,25 @@ redistributable open source without resolving that boundary.
 |---|---|
 | [`scripts/build-ios.sh`](scripts/build-ios.sh) | Complete Simulator or device build |
 | [`scripts/package-ios.sh`](scripts/package-ios.sh) | Signed-package and game-data audit |
+| [`scripts/check-repo-safety.sh`](scripts/check-repo-safety.sh) | Fast tracked-asset, history, patch, script, and documentation gate |
 | [`patches/`](patches/) | HarkinianPad changes replayed onto pinned upstream source |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Full build, signing, installation, and testing guide |
+| [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | Source and IPA publication gates |
 | [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout and input contract |
 | [`docs/remaining-work.md`](docs/remaining-work.md) | Evidence ledger and remaining gates |
 | [`ref/`](ref/) | Ignored local reference area; only its safety README is tracked |
 
 Generated source trees, build directories, artifacts, ROMs, and ROM-derived
 archives are ignored and must never be committed.
+
+## Contributing and support
+
+Use the structured
+[bug report](https://github.com/chrissotraidis/harkinianpad/issues/new/choose)
+for reproducible gameplay or platform defects. Read
+[`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing a change and
+[`SECURITY.md`](SECURITY.md) before reporting a sensitive vulnerability.
+Never attach or request game data.
 
 ## Legal and acknowledgements
 

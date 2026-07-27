@@ -13,25 +13,42 @@ concurrency:
   group: ios-build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   DEPLOYMENT_TARGET: "14.0"
 
 jobs:
+  repository-safety:
+    name: Repository safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check tracked assets, history, scripts, patches, and docs
+        run: scripts/check-repo-safety.sh
+
   ios-build:
     name: Full app (unsigned iPhoneOS)
     runs-on: macos-15
     timeout-minutes: 120
+    needs: repository-safety
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install host archive-build dependencies
         run: >-
           brew install cmake ninja pkgconf sdl2 glew nlohmann-json libpng
-          libogg libvorbis opus opusfile
+          libzip tinyxml2 libogg libvorbis opus opusfile
 
       - name: Cache host and iOS dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             build-host-soh/_deps

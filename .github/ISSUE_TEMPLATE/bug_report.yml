@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a reproducible HarkinianPad problem without sharing game data.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing HarkinianPad. Never attach or link to a ROM,
+        `oot*.o2r`, `.otr`, provisioning profile, certificate, private key,
+        signed IPA, or extracted copyrighted asset.
+
+  - type: input
+    id: commit
+    attributes:
+      label: HarkinianPad commit
+      description: Run `git rev-parse --short HEAD` or provide the release tag.
+      placeholder: abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Physical iPad
+        - Physical iPhone
+        - iPad Simulator
+        - iPhone Simulator
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS
+      placeholder: 12.9-inch iPad Pro (6th generation), iPadOS 26.5.2
+    validations:
+      required: true
+
+  - type: input
+    id: install
+    attributes:
+      label: Build and installation method
+      placeholder: Local Xcode device build, in-place install
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the exact menu, input method, and app lifecycle state.
+    validations:
+      required: true
+
+  - type: textarea
+    id: result
+    attributes:
+      label: Observed and expected result
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Remove personal paths, signing details, ROM data, and generated game assets.
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I searched existing issues and reproduced this on the latest available build.
+          required: true
+        - label: I have not attached or linked to copyrighted game data or signing credentials.
+          required: true

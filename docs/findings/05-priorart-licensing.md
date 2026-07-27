@@ -280,7 +280,8 @@ From `soh/README.md` (local, read in full), verbatim/near-verbatim citations:
 - Line 16: **"The Ship does not include any copyrighted assets. You are required to provide a supported
   copy of the game."**
 - Line 18–19: "Verify your ROM dump... using the compatibility checker at https://ship.equipment/... or...
-  cross-reference its `sha1` hash with the hashes [here](docs/supportedHashes.json)."
+  cross-reference its `sha1` hash with the hashes
+  [here](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/supportedHashes.json)."
 - Line 77 (Project Overview): "In order for the game to function, you will require a **legally acquired**
   ROM for Ocarina of Time... **Any copyrighted assets are extracted from the ROM and reformatted as a `.o2r`
   archive file** which the code uses."
@@ -357,16 +358,10 @@ forks, SpaghettiKart iOS build)**:
 
 ---
 
-## Key file paths referenced (local)
+## Key source trees referenced
 
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/soh/README.md`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/soh/CMakeLists.txt`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/soh/.gitmodules`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/lus-pinned/LICENSE`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/lus-pinned/README.md`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/lus-pinned/docs/PORTING.md`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/lus-pinned/src/ship/port/mobile/MobileImpl.cpp`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/lus-pinned/cmake/dependencies/ios.cmake`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/lus-wiiu/LICENSE`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/zapdtr/LICENSE`
-- `/tmp/claude-0/-home-user-harkinianpad/f6ff1f43-8b8f-5a94-b998-a5249c3653f5/scratchpad/otrexporter/LICENSE`
+The citations above refer to the repository names and pinned revisions in
+section B1 and in
+[`ios-feasibility-and-implementation-plan.md`](../ios-feasibility-and-implementation-plan.md).
+The original investigation used disposable local clones; machine-specific
+scratch paths are intentionally omitted from this public document.

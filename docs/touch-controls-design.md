@@ -36,16 +36,23 @@ ornament.
 - Gameplay controls stay in the lower half of a landscape iPad.
 - L/Z and Start/R sit below the menu content line, within reach while holding
   the side edges.
-- The compact D-pad sits left of the raised control stick.
-- A/B/Z form a separate right-side triangle; the smaller C-button diamond sits
-  directly below it.
-- The 38-point persistent `•••` menu button sits at the upper-right safe area,
-  below Shipwright's menu divider. It remains available when gameplay touch
-  controls are disabled.
+- The compact D-pad sits left of the raised control stick. On iPhone, the
+  D-pad and C-button rows sit slightly above the face cluster so adjacent
+  controls do not intersect.
+- A/B/Z form a separate right-side triangle. The smaller C-button diamond sits
+  below it on iPad and above it on iPhone so the face buttons occupy the
+  phone's natural lower thumb zone.
+- The persistent `•••` menu button sits at the upper-right safe area on iPad
+  and in a dedicated top-center slot during iPhone gameplay. While the
+  Shipwright menu is open on iPhone, it moves to bottom center so it does not
+  cover the Settings, Enhancements, Randomizer, or Dev Tools tabs. It remains
+  available when gameplay touch controls are disabled.
 - Z is intentionally duplicated in the left shoulder row and right face
   cluster; both copies emit the same binding.
-- iPhone uses the same relationships at a smaller scale.
-- Empty overlay space passes touches through to the game and menus.
+- iPhone uses a dedicated compact grip layout instead of shrinking the iPad
+  geometry proportionally.
+- Empty overlay space passes touches through to menus, but synthetic
+  touch-as-mouse clicks are not forwarded to gameplay button mappings.
 
 ## Input mapping
 
@@ -67,9 +74,11 @@ map to A, B, and Z.
 | C up/down/left/right | Arrow keys | C buttons |
 | Menu | Escape | Open/close HarkinianPad menu |
 
-The on-screen stick is deliberately eight-way in this basic test slice.
-Physical controllers retain their normal analog path and remain the reference
-for final gameplay feel.
+The on-screen stick is deliberately eight-way in this basic test slice. It
+uses separate engage/release thresholds to prevent direction chatter, keeps
+smaller deflections cardinal for menu precision, and allows diagonals in the
+outer ring. Physical controllers retain their normal analog path and remain
+the reference for final gameplay feel.
 
 ## Toggle behavior
 
@@ -90,11 +99,33 @@ for final gameplay feel.
 - Two-point light border with white labels.
 - Circular thumb and face controls; compact pills for shoulders.
 - N64-inspired hierarchy: blue A, green B, red Start, and amber C buttons.
-- Primary A/B/Z buttons are 66 points at base scale; D-pad buttons are 52,
-  C buttons are 46, the menu is 38, and the stick is 150. The smaller
-  secondary controls preserve clear gaps between groups.
+- Primary A/B/Z buttons are 66 points at the iPad base scale; D-pad buttons
+  are 52, C buttons are 46, the menu is 38, and the stick is 150. The iPhone
+  layout uses 52-point face buttons, 44-point D-pad buttons and shoulders,
+  40-point C buttons, a 44-point menu button, and a 116-point stick.
 - A brighter fill while pressed.
 - No textures, custom assets, haptics, editor, or resize system.
+
+## Future native HUD touch experiment
+
+Do not replace the current UIKit controls until a native-HUD prototype passes
+on both iPhone and iPad. Shipwright already supports separate positions for
+the native A, B, and four C-button graphics, but their complete visual scaling
+is not implemented consistently.
+
+The smallest reversible prototype should:
+
+- keep the current UIKit input path and layouts as the fallback;
+- render enlarged native A/B/C graphics over transparent UIKit hit targets
+  during gameplay;
+- restore the visible UIKit buttons whenever the gameplay HUD is unavailable,
+  including title, file-select, pause, and menu states;
+- use separate automatically selected iPhone and iPad position presets; and
+- keep C-up discoverable for normal input while preserving Navi's conditional
+  prompt behavior.
+
+Simulator proof is necessary for layout work, but final acceptance requires
+physical gameplay on both device classes.
 
 ## Acceptance checks
 
@@ -110,7 +141,9 @@ for final gameplay feel.
 7. A clean/default keyboard configuration accepts Space and Return for Start.
 8. A clean/default mouse configuration maps primary/secondary/middle click to
    A/B/Z.
-9. The physical-controller path and ROM-free package audit are unchanged.
+9. Empty-screen taps do not trigger A, while menu touch and physical mouse
+   input remain available.
+10. The physical-controller path and ROM-free package audit are unchanged.
 
 The core grip layout, navigation, gameplay inputs, menu access, and live toggle
 were accepted on a 12.9-inch iPad Pro (6th generation). Extended simultaneous

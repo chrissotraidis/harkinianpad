@@ -157,6 +157,16 @@ diff --git a/src/fast/Fast3dWindow.cpp b/src/fast/Fast3dWindow.cpp
 index 2b77a5f2..4e71d61d 100644
 --- a/src/fast/Fast3dWindow.cpp
 +++ b/src/fast/Fast3dWindow.cpp
+@@ -85,3 +85,9 @@ void Fast3dWindow::Init() {
+     isFullscreen =
+         Ship::Context::GetRawInstance()->GetConfig()->GetBool("Window.Fullscreen.Enabled", false) || gameMode;
++#ifdef __IOS__
++    // UIKit already owns the full-screen window. Desktop SDL fullscreen modes
++    // can leave the Metal view black or constrained to a stale saved size.
++    isFullscreen = false;
++    Ship::Context::GetRawInstance()->GetConfig()->SetBool("Window.Fullscreen.Enabled", false);
++#endif
+     posX = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.PositionX", 100);
 @@ -126,10 +126,18 @@ void Fast3dWindow::SetMaximumFrameLatency(int32_t latency) {
  }
  
@@ -218,7 +228,20 @@ index 15c5415f..99cb4332 100644
  const SDL_Scancode lus_to_sdl_table[] = {
      SDL_SCANCODE_UNKNOWN,
      SDL_SCANCODE_ESCAPE,
-@@ -235,7 +252,7 @@ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
+@@ -217,2 +241,12 @@ GfxWindowBackendSDL2::~GfxWindowBackendSDL2() {
+ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
++#ifdef __IOS__
++    // An iOS application window is already full-screen. Switching SDL desktop
++    // display modes can detach or invalidate the Metal drawable.
++    mFullScreen = false;
++    if (mOnFullscreenChanged != nullptr && call_callback) {
++        mOnFullscreenChanged(false);
++    }
++    return;
++#endif
++
+     if (mFullScreen == on) {
+@@ -235,7 +269,7 @@ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
          }
      }
  
@@ -227,7 +250,37 @@ index 15c5415f..99cb4332 100644
      // Implement fullscreening with native macOS APIs
      if (on != isNativeMacOSFullscreenActive(mWnd)) {
          toggleNativeMacOSFullscreen(mWnd);
-@@ -657,6 +674,29 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
+@@ -436,2 +470,9 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
+         SDL_GetRendererOutputSize(mRenderer, &mWindowWidth, &mWindowHeight);
++#ifdef __IOS__
++        int windowWidth = 0;
++        int windowHeight = 0;
++        SDL_GetWindowSize(mWnd, &windowWidth, &windowHeight);
++        SPDLOG_INFO("iOS display initialized: window {}x{}, drawable {}x{}", windowWidth, windowHeight, mWindowWidth,
++                    mWindowHeight);
++#endif
+         window_impl.Metal = { mWnd, mRenderer };
+@@ -626,9 +667,19 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
+             OnKeyup(event.key.keysym.scancode);
+             break;
+         case SDL_MOUSEBUTTONDOWN:
++#ifdef __IOS__
++            if (event.button.which == SDL_TOUCH_MOUSEID) {
++                break;
++            }
++#endif
+             OnMouseButtonDown(event.button.button - 1);
+             break;
+         case SDL_MOUSEBUTTONUP:
++#ifdef __IOS__
++            if (event.button.which == SDL_TOUCH_MOUSEID) {
++                break;
++            }
++#endif
+             OnMouseButtonUp(event.button.button - 1);
+             break;
+         case SDL_MOUSEWHEEL:
+@@ -657,6 +708,29 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
          case SDL_DROPFILE:
              Ship::Context::GetRawInstance()->GetFileDropMgr()->SetDroppedFile(event.drop.file);
              break;
@@ -257,7 +310,7 @@ index 15c5415f..99cb4332 100644
          case SDL_QUIT:
              Close();
              break;
-@@ -674,7 +714,7 @@ void GfxWindowBackendSDL2::HandleEvents() {
+@@ -674,7 +748,7 @@ void GfxWindowBackendSDL2::HandleEvents() {
      }
  
      // resync fullscreen state
@@ -266,7 +319,7 @@ index 15c5415f..99cb4332 100644
      auto nextFullscreenState = isNativeMacOSFullscreenActive(mWnd);
      if (mFullScreen != nextFullscreenState) {
          mFullScreen = nextFullscreenState;
-@@ -686,7 +726,11 @@ void GfxWindowBackendSDL2::HandleEvents() {
+@@ -686,7 +760,11 @@ void GfxWindowBackendSDL2::HandleEvents() {
  }
  
  bool GfxWindowBackendSDL2::IsFrameReady() {

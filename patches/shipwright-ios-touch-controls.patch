@@ -29,12 +29,25 @@ index 000000000..30ea1d3e5
 +#ifdef __cplusplus
 +}
 +#endif
+diff --git a/soh/ios/Info.plist.in b/soh/ios/Info.plist.in
+index e7649651c..13632fa0e 100644
+--- a/soh/ios/Info.plist.in
++++ b/soh/ios/Info.plist.in
+@@ -43,6 +43,8 @@
+     <true/>
+     <key>UIFileSharingEnabled</key>
+     <true/>
++    <key>UILaunchScreen</key>
++    <dict/>
+     <key>UIRequiredDeviceCapabilities</key>
+     <array>
+         <string>arm64</string>
 diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
 new file mode 100644
 index 0000000..251faa5
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.mm
-@@ -0,0 +1,530 @@
+@@ -0,0 +1,628 @@
 +#import <UIKit/UIKit.h>
 +
 +#include <atomic>
@@ -208,11 +221,33 @@ index 0000000..251faa5
 +    }
 +    self.knob.center = CGPointMake(center.x + dx, center.y + dy);
 +
-+    CGFloat threshold = radius * 0.30;
-+    [self setScancode:SDL_SCANCODE_W pressed:dy < -threshold state:&_upPressed];
-+    [self setScancode:SDL_SCANCODE_S pressed:dy > threshold state:&_downPressed];
-+    [self setScancode:SDL_SCANCODE_A pressed:dx < -threshold state:&_leftPressed];
-+    [self setScancode:SDL_SCANCODE_D pressed:dx > threshold state:&_rightPressed];
++    // Use separate engage/release thresholds so a thumb near the boundary
++    // does not chatter between directions. Keep smaller deflections cardinal
++    // for precise menu and name-entry navigation; the outer ring allows
++    // normal diagonal movement.
++    CGFloat engageThreshold = radius * 0.46;
++    CGFloat releaseThreshold = radius * 0.28;
++    CGFloat horizontalThreshold = (self.leftPressed || self.rightPressed) ? releaseThreshold : engageThreshold;
++    CGFloat verticalThreshold = (self.upPressed || self.downPressed) ? releaseThreshold : engageThreshold;
++    BOOL pressUp = dy < -verticalThreshold;
++    BOOL pressDown = dy > verticalThreshold;
++    BOOL pressLeft = dx < -horizontalThreshold;
++    BOOL pressRight = dx > horizontalThreshold;
++
++    if (distance < radius * 0.78) {
++        if (fabs(dx) >= fabs(dy)) {
++            pressUp = NO;
++            pressDown = NO;
++        } else {
++            pressLeft = NO;
++            pressRight = NO;
++        }
++    }
++
++    [self setScancode:SDL_SCANCODE_W pressed:pressUp state:&_upPressed];
++    [self setScancode:SDL_SCANCODE_S pressed:pressDown state:&_downPressed];
++    [self setScancode:SDL_SCANCODE_A pressed:pressLeft state:&_leftPressed];
++    [self setScancode:SDL_SCANCODE_D pressed:pressRight state:&_rightPressed];
 +}
 +
 +- (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
@@ -359,23 +394,87 @@ index 0000000..251faa5
 +    UIEdgeInsets safe = self.safeAreaInsets;
 +    CGFloat width = CGRectGetWidth(self.bounds);
 +    CGFloat height = CGRectGetHeight(self.bounds);
-+    // Phones in landscape are roughly half an iPad's height, so the old 0.78
-+    // floor forced iPad-sized controls onto a ~430pt canvas and the clusters
-+    // collided. Let compact heights scale down proportionally.
 +    BOOL compact = height < 560.0;
-+    CGFloat scale = MAX(compact ? 0.44 : 0.78, MIN(1.12, height / 834.0));
++
++    if (compact) {
++        // A phone needs its own grip layout. Scaling the iPad controls down
++        // made the face and C buttons smaller than useful touch targets.
++        CGFloat left = safe.left + 10.0;
++        CGFloat right = safe.right + 10.0;
++        CGFloat top = safe.top + 36.0;
++        CGFloat shoulderHeight = 44.0;
++        CGFloat shoulderWidth = 76.0;
++
++        self.buttonL.frame = CGRectMake(left, top, shoulderWidth, shoulderHeight);
++        self.buttonZLeft.frame =
++            CGRectMake(CGRectGetMaxX(self.buttonL.frame) + 8.0, top, shoulderHeight, shoulderHeight);
++        self.buttonR.frame =
++            CGRectMake(width - right - shoulderWidth, top, shoulderWidth, shoulderHeight);
++        self.buttonStart.frame =
++            CGRectMake(CGRectGetMinX(self.buttonR.frame) - shoulderHeight - 8.0, top, shoulderHeight,
++                       shoulderHeight);
++
++        CGFloat dSize = 44.0;
++        CGFloat dRadius = 38.0;
++        CGPoint dCenter = CGPointMake(left + 54.0, top + shoulderHeight + 80.0);
++        self.dUp.frame =
++            CGRectMake(dCenter.x - dSize * 0.5, dCenter.y - dRadius - dSize * 0.5, dSize, dSize);
++        self.dDown.frame =
++            CGRectMake(dCenter.x - dSize * 0.5, dCenter.y + dRadius - dSize * 0.5, dSize, dSize);
++        self.dLeft.frame =
++            CGRectMake(dCenter.x - dRadius - dSize * 0.5, dCenter.y - dSize * 0.5, dSize, dSize);
++        self.dRight.frame =
++            CGRectMake(dCenter.x + dRadius - dSize * 0.5, dCenter.y - dSize * 0.5, dSize, dSize);
++
++        CGFloat stickSize = 116.0;
++        CGPoint stickCenter =
++            CGPointMake(left + 88.0, height - safe.bottom - 88.0);
++        self.controlStick.frame =
++            CGRectMake(stickCenter.x - stickSize * 0.5, stickCenter.y - stickSize * 0.5, stickSize, stickSize);
++
++        CGFloat rightCenterX = width - right - 58.0;
++        CGFloat faceCenterY = height - safe.bottom - 82.0;
++        CGFloat faceSize = 52.0;
++        self.buttonA.frame =
++            CGRectMake(rightCenterX + 22.0 - faceSize * 0.5, faceCenterY + 18.0 - faceSize * 0.5, faceSize,
++                       faceSize);
++        self.buttonB.frame =
++            CGRectMake(rightCenterX - 34.0 - faceSize * 0.5, faceCenterY + 2.0 - faceSize * 0.5, faceSize,
++                       faceSize);
++        self.buttonZRight.frame =
++            CGRectMake(rightCenterX + 12.0 - faceSize * 0.5, faceCenterY - 44.0 - faceSize * 0.5, faceSize,
++                       faceSize);
++
++        CGFloat cSize = 40.0;
++        CGFloat cRadius = 34.0;
++        CGPoint cCenter = CGPointMake(rightCenterX, top + shoulderHeight + 80.0);
++        self.cUp.frame =
++            CGRectMake(cCenter.x - cSize * 0.5, cCenter.y - cRadius - cSize * 0.5, cSize, cSize);
++        self.cDown.frame =
++            CGRectMake(cCenter.x - cSize * 0.5, cCenter.y + cRadius - cSize * 0.5, cSize, cSize);
++        self.cLeft.frame =
++            CGRectMake(cCenter.x - cRadius - cSize * 0.5, cCenter.y - cSize * 0.5, cSize, cSize);
++        self.cRight.frame =
++            CGRectMake(cCenter.x + cRadius - cSize * 0.5, cCenter.y - cSize * 0.5, cSize, cSize);
++
++        for (HarkinianPadTouchButton* button in self.buttons) {
++            button.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
++        }
++        self.buttonStart.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
++        return;
++    }
++
++    CGFloat scale = MAX(0.78, MIN(1.12, height / 834.0));
 +    CGFloat edge = 18.0 * scale;
 +    CGFloat left = safe.left + edge;
 +    CGFloat right = safe.right + edge;
 +    CGFloat usableWidth = width - safe.left - safe.right;
-+    CGFloat railWidth = MIN(250.0 * scale, usableWidth * (compact ? 0.16 : 0.22));
++    CGFloat railWidth = MIN(250.0 * scale, usableWidth * 0.22);
 +    CGFloat leftCenter = safe.left + railWidth * 0.5;
 +    CGFloat rightCenter = width - safe.right - railWidth * 0.5;
-+    // Compact screens need the three rows pushed apart; the iPad fractions
-+    // bunch the shoulder row, d-pad and stick into the same band.
-+    CGFloat gripTopY = MAX(safe.top + edge, height * (compact ? 0.20 : 0.38));
-+    CGFloat middleCenterY = height * (compact ? 0.54 : 0.60);
-+    CGFloat lowCenterY = height * (compact ? 0.88 : 0.86);
++    CGFloat gripTopY = MAX(safe.top + edge, height * 0.38);
++    CGFloat middleCenterY = height * 0.60;
++    CGFloat lowCenterY = height * 0.86;
 +    CGFloat stickCenterX = leftCenter + 65.0 * scale;
 +    CGFloat stickCenterY = lowCenterY - 70.0 * scale;
 +    CGFloat dpadCenterX = leftCenter - 30.0 * scale;
@@ -500,13 +599,25 @@ index 0000000..251faa5
 +            UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
 +    }
 +
-+    const CGFloat size = 38.0;
 +    const UIEdgeInsets safe = window.safeAreaInsets;
 +    const CGFloat height = CGRectGetHeight(window.bounds);
 +    const BOOL compact = height < 560.0;
-+    sMenuButton.frame =
-+        CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0,
-+                   safe.top + (compact ? 18.0 : 76.0), size, size);
++    const CGFloat size = compact ? 44.0 : 38.0;
++    if (compact) {
++        const BOOL menuVisible = sTouchControlsMenuVisible.load();
++        const CGFloat y =
++            menuVisible ? height - safe.bottom - size - 8.0 : safe.top + 8.0;
++        sMenuButton.frame =
++            CGRectMake(CGRectGetMidX(window.bounds) - size * 0.5, y, size, size);
++        sMenuButton.autoresizingMask =
++            UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin |
++            (menuVisible ? UIViewAutoresizingFlexibleTopMargin : UIViewAutoresizingFlexibleBottomMargin);
++    } else {
++        sMenuButton.frame =
++            CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0, safe.top + 76.0, size, size);
++        sMenuButton.autoresizingMask =
++            UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
++    }
 +    if (sMenuButton.superview != window) {
 +        [sMenuButton removeFromSuperview];
 +        [window addSubview:sMenuButton];
@@ -604,7 +715,20 @@ index 786c17591..bcef4c797 100644
  extern "C" {
  #include "include/z64audio.h"
  #include "variables.h"
-@@ -434,6 +438,21 @@ void SohMenu::AddMenuSettings() {
+@@ -332,10 +336,12 @@ void SohMenu::AddMenuSettings() {
+     path.sidebarName = "Graphics";
+     AddSidebarEntry("Settings", "Graphics", 3);
+     AddWidget(path, "Graphics Options", WIDGET_SEPARATOR_TEXT);
++#ifndef __IOS__
+     AddWidget(path, "Toggle Fullscreen", WIDGET_BUTTON)
+         .RaceDisable(false)
+         .Callback([](WidgetInfo& info) { Ship::Context::GetRawInstance()->GetWindow()->ToggleFullscreen(); })
+         .Options(ButtonOptions().Tooltip("Toggles Fullscreen On/Off."));
++#endif
+     AddWidget(path, "Internal Resolution", WIDGET_CVAR_SLIDER_FLOAT)
+         .CVar(CVAR_INTERNAL_RESOLUTION)
+         .RaceDisable(false)
+@@ -434,6 +440,21 @@ void SohMenu::AddMenuSettings() {
      path.sidebarName = "Controls";
      path.column = SECTION_COLUMN_1;
      AddSidebarEntry("Settings", "Controls", 2);

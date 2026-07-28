@@ -31,10 +31,10 @@ index 000000000..30ea1d3e5
 +#endif
 diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
 new file mode 100644
-index 000000000..cdba60a49
+index 0000000..251faa5
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.mm
-@@ -0,0 +1,522 @@
+@@ -0,0 +1,530 @@
 +#import <UIKit/UIKit.h>
 +
 +#include <atomic>
@@ -359,17 +359,23 @@ index 000000000..cdba60a49
 +    UIEdgeInsets safe = self.safeAreaInsets;
 +    CGFloat width = CGRectGetWidth(self.bounds);
 +    CGFloat height = CGRectGetHeight(self.bounds);
-+    CGFloat scale = MAX(0.78, MIN(1.12, height / 834.0));
++    // Phones in landscape are roughly half an iPad's height, so the old 0.78
++    // floor forced iPad-sized controls onto a ~430pt canvas and the clusters
++    // collided. Let compact heights scale down proportionally.
++    BOOL compact = height < 560.0;
++    CGFloat scale = MAX(compact ? 0.44 : 0.78, MIN(1.12, height / 834.0));
 +    CGFloat edge = 18.0 * scale;
 +    CGFloat left = safe.left + edge;
 +    CGFloat right = safe.right + edge;
 +    CGFloat usableWidth = width - safe.left - safe.right;
-+    CGFloat railWidth = MIN(250.0 * scale, usableWidth * 0.22);
++    CGFloat railWidth = MIN(250.0 * scale, usableWidth * (compact ? 0.16 : 0.22));
 +    CGFloat leftCenter = safe.left + railWidth * 0.5;
 +    CGFloat rightCenter = width - safe.right - railWidth * 0.5;
-+    CGFloat gripTopY = MAX(safe.top + edge, height * 0.38);
-+    CGFloat middleCenterY = height * 0.60;
-+    CGFloat lowCenterY = height * 0.86;
++    // Compact screens need the three rows pushed apart; the iPad fractions
++    // bunch the shoulder row, d-pad and stick into the same band.
++    CGFloat gripTopY = MAX(safe.top + edge, height * (compact ? 0.20 : 0.38));
++    CGFloat middleCenterY = height * (compact ? 0.54 : 0.60);
++    CGFloat lowCenterY = height * (compact ? 0.88 : 0.86);
 +    CGFloat stickCenterX = leftCenter + 65.0 * scale;
 +    CGFloat stickCenterY = lowCenterY - 70.0 * scale;
 +    CGFloat dpadCenterX = leftCenter - 30.0 * scale;
@@ -496,9 +502,11 @@ index 000000000..cdba60a49
 +
 +    const CGFloat size = 38.0;
 +    const UIEdgeInsets safe = window.safeAreaInsets;
++    const CGFloat height = CGRectGetHeight(window.bounds);
++    const BOOL compact = height < 560.0;
 +    sMenuButton.frame =
 +        CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0,
-+                   safe.top + 76.0, size, size);
++                   safe.top + (compact ? 18.0 : 76.0), size, size);
 +    if (sMenuButton.superview != window) {
 +        [sMenuButton removeFromSuperview];
 +        [window addSubview:sMenuButton];

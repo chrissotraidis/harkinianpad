@@ -6,10 +6,9 @@ for your own iPhone or iPad.
 
 The IPA does not include Ocarina of Time, a ROM, or generated game data.
 
-[Download HarkinianPad 0.1.0 developer preview](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.1/HarkinianPad-0.1.0-preview.1-unsigned.ipa)
+[Download HarkinianPad 0.1.0 build 2 developer preview](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.2/HarkinianPad-0.1.0-preview.2-unsigned.ipa)
 
-SHA-256:
-`579baae716361cd34430fee21f0c82755b2d874d1de23723f36f60f1264ef541`
+The GitHub release page records the SHA-256 for the exact published asset.
 
 ## Install
 

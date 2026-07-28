@@ -82,12 +82,47 @@ package_root="$(mktemp -d /tmp/harkinianpad-package.XXXXXX)"
 trap 'rm -rf "$package_root"' EXIT
 mkdir "$package_root/Payload"
 ditto "$APP" "$package_root/Payload/HarkinianPad.app"
+
+if [ ! -f "$ROOT/RIGHTS_AND_LICENSES.md" ]; then
+    echo "Required rights and licensing notice is missing." >&2
+    exit 1
+fi
+cp "$ROOT/RIGHTS_AND_LICENSES.md" "$package_root/RIGHTS_AND_LICENSES.md"
+
+licenses_dir="$package_root/ThirdPartyLicenses"
+license_count=0
+mkdir "$licenses_dir"
+while IFS= read -r -d '' license_file; do
+    relative="${license_file#"$ROOT/"}"
+    destination="$licenses_dir/$relative"
+    mkdir -p "$(dirname "$destination")"
+    cp "$license_file" "$destination"
+    license_count=$((license_count + 1))
+done < <(
+    find "$ROOT/sources/Shipwright" "$ROOT/build-ios-soh/_deps" -type f \
+        \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'NOTICE*' \) \
+        -print0 | sort -z
+)
+if [ "$license_count" -eq 0 ]; then
+    echo "No third-party license files were found for packaging." >&2
+    exit 1
+fi
+
 ditto -c -k --norsrc --keepParent "$package_root/Payload" "$output"
+(
+    cd "$package_root"
+    zip -q -r "$output" RIGHTS_AND_LICENSES.md ThirdPartyLicenses
+)
 
 ipa_entries="$(unzip -Z1 "$output")"
 if ! grep -Fxq 'Payload/HarkinianPad.app/HarkinianPad' \
     <<< "$ipa_entries"; then
     echo "IPA payload verification failed: $output" >&2
+    exit 1
+fi
+if ! grep -Fxq 'RIGHTS_AND_LICENSES.md' <<< "$ipa_entries" ||
+   ! grep -Fq 'ThirdPartyLicenses/' <<< "$ipa_entries"; then
+    echo "IPA licensing-notice verification failed: $output" >&2
     exit 1
 fi
 

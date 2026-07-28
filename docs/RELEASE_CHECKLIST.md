@@ -16,9 +16,9 @@ This is the final gate for a public source snapshot or downloadable IPA.
 
 ## Before publishing an unsigned developer-preview IPA
 
-- [ ] The owner has selected and documented licensing terms for
-      HarkinianPad-owned work and confirmed the Shipwright distribution
-      boundary.
+- [ ] [`RIGHTS_AND_LICENSES.md`](../RIGHTS_AND_LICENSES.md) still limits the
+      HarkinianPad notice to project-owned work and does not claim to
+      relicense Shipwright, dependencies, Nintendo material, or game data.
 - [ ] Build from a clean checkout at a tagged commit.
 - [ ] Use the stable bundle identifier
       `com.chrissotraidis.harkinianpad`.
@@ -29,9 +29,14 @@ This is the final gate for a public source snapshot or downloadable IPA.
       `embedded.mobileprovision`.
 - [ ] Confirm the IPA contains only the ROM-free `soh.o2r`; it must never
       contain the user's ROM or generated `oot.o2r`.
-- [ ] Re-sign and install the exact IPA with AltStore Classic on a physical
-      iPad, then replay launch, audio, touch, Files import, extraction, and
-      save/load without deleting the previous installation.
+- [ ] Confirm the IPA carries `RIGHTS_AND_LICENSES.md` and the discovered
+      dependency license files under `ThirdPartyLicenses/`.
+- [ ] Re-sign and update-install the exact IPA on physical iPhone and iPad.
+      Prefer AltStore Classic when available. Apple Development signing of the
+      exact extracted payload is an accepted fallback when AltStore is not
+      installed; record that limitation in the release notes.
+- [ ] Replay launch, touch, Files/imported-data visibility, and save
+      preservation without deleting the previous installation.
 - [ ] Record the tag, commit, Xcode version, SDK, app version, build number,
       unsigned IPA SHA-256, and supported device/OS range in release notes.
 - [ ] Publish the IPA as a GitHub prerelease with
@@ -49,13 +54,10 @@ This is the final gate for a public source snapshot or downloadable IPA.
 
 ## Current blockers
 
-- The exact unsigned preview IPA has not yet completed an AltStore Classic
-  re-sign/install/update replay.
 - Physical controller, reconnect, rumble, and motion testing is incomplete.
 - The complete lifecycle/interruption matrix remains open.
-- No top-level HarkinianPad license has been selected.
 
 Controller and lifecycle gaps may be published as explicit developer-preview
-limitations. Licensing and the exact-package AltStore replay must be resolved
-before attaching a public IPA. Until then, describe this repository as a
-public source preview with local Xcode installation.
+limitations. Every public IPA must carry the scoped rights notice and
+third-party license files, and its exact payload must pass an in-place
+physical-device update before publication.

@@ -47,7 +47,7 @@ new file mode 100644
 index 0000000..251faa5
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.mm
-@@ -0,0 +1,620 @@
+@@ -0,0 +1,628 @@
 +#import <UIKit/UIKit.h>
 +
 +#include <atomic>
@@ -399,9 +399,9 @@ index 0000000..251faa5
 +    if (compact) {
 +        // A phone needs its own grip layout. Scaling the iPad controls down
 +        // made the face and C buttons smaller than useful touch targets.
-+        CGFloat left = safe.left + 8.0;
-+        CGFloat right = safe.right + 8.0;
-+        CGFloat top = safe.top + 8.0;
++        CGFloat left = safe.left + 10.0;
++        CGFloat right = safe.right + 10.0;
++        CGFloat top = safe.top + 36.0;
 +        CGFloat shoulderHeight = 44.0;
 +        CGFloat shoulderWidth = 76.0;
 +
@@ -416,7 +416,7 @@ index 0000000..251faa5
 +
 +        CGFloat dSize = 44.0;
 +        CGFloat dRadius = 38.0;
-+        CGPoint dCenter = CGPointMake(left + 60.0, top + shoulderHeight + 64.0);
++        CGPoint dCenter = CGPointMake(left + 54.0, top + shoulderHeight + 80.0);
 +        self.dUp.frame =
 +            CGRectMake(dCenter.x - dSize * 0.5, dCenter.y - dRadius - dSize * 0.5, dSize, dSize);
 +        self.dDown.frame =
@@ -428,26 +428,26 @@ index 0000000..251faa5
 +
 +        CGFloat stickSize = 116.0;
 +        CGPoint stickCenter =
-+            CGPointMake(left + 70.0, height - safe.bottom - 64.0);
++            CGPointMake(left + 88.0, height - safe.bottom - 88.0);
 +        self.controlStick.frame =
 +            CGRectMake(stickCenter.x - stickSize * 0.5, stickCenter.y - stickSize * 0.5, stickSize, stickSize);
 +
-+        CGFloat rightCenterX = width - right - 72.0;
-+        CGFloat faceCenterY = top + shoulderHeight + 76.0;
++        CGFloat rightCenterX = width - right - 58.0;
++        CGFloat faceCenterY = height - safe.bottom - 82.0;
 +        CGFloat faceSize = 52.0;
 +        self.buttonA.frame =
-+            CGRectMake(rightCenterX + 24.0 - faceSize * 0.5, faceCenterY + 22.0 - faceSize * 0.5, faceSize,
++            CGRectMake(rightCenterX + 22.0 - faceSize * 0.5, faceCenterY + 18.0 - faceSize * 0.5, faceSize,
 +                       faceSize);
 +        self.buttonB.frame =
-+            CGRectMake(rightCenterX - 34.0 - faceSize * 0.5, faceCenterY + 8.0 - faceSize * 0.5, faceSize,
++            CGRectMake(rightCenterX - 34.0 - faceSize * 0.5, faceCenterY + 2.0 - faceSize * 0.5, faceSize,
 +                       faceSize);
 +        self.buttonZRight.frame =
-+            CGRectMake(rightCenterX + 15.0 - faceSize * 0.5, faceCenterY - 38.0 - faceSize * 0.5, faceSize,
++            CGRectMake(rightCenterX + 12.0 - faceSize * 0.5, faceCenterY - 44.0 - faceSize * 0.5, faceSize,
 +                       faceSize);
 +
-+        CGFloat cSize = 44.0;
-+        CGFloat cRadius = 38.0;
-+        CGPoint cCenter = CGPointMake(rightCenterX, height - safe.bottom - 72.0);
++        CGFloat cSize = 40.0;
++        CGFloat cRadius = 34.0;
++        CGPoint cCenter = CGPointMake(rightCenterX, top + shoulderHeight + 80.0);
 +        self.cUp.frame =
 +            CGRectMake(cCenter.x - cSize * 0.5, cCenter.y - cRadius - cSize * 0.5, cSize, cSize);
 +        self.cDown.frame =
@@ -604,11 +604,19 @@ index 0000000..251faa5
 +    const BOOL compact = height < 560.0;
 +    const CGFloat size = compact ? 44.0 : 38.0;
 +    if (compact) {
++        const BOOL menuVisible = sTouchControlsMenuVisible.load();
++        const CGFloat y =
++            menuVisible ? height - safe.bottom - size - 8.0 : safe.top + 8.0;
 +        sMenuButton.frame =
-+            CGRectMake(CGRectGetMidX(window.bounds) - size * 0.5, safe.top + 8.0, size, size);
++            CGRectMake(CGRectGetMidX(window.bounds) - size * 0.5, y, size, size);
++        sMenuButton.autoresizingMask =
++            UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin |
++            (menuVisible ? UIViewAutoresizingFlexibleTopMargin : UIViewAutoresizingFlexibleBottomMargin);
 +    } else {
 +        sMenuButton.frame =
 +            CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0, safe.top + 76.0, size, size);
++        sMenuButton.autoresizingMask =
++            UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
 +    }
 +    if (sMenuButton.superview != window) {
 +        [sMenuButton removeFromSuperview];

@@ -31,10 +31,10 @@ index 000000000..30ea1d3e5
 +#endif
 diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
 new file mode 100644
-index 0000000..467bef5
+index 0000000..251faa5
 --- /dev/null
 +++ b/soh/ios/HarkinianPadTouchControls.mm
-@@ -0,0 +1,528 @@
+@@ -0,0 +1,530 @@
 +#import <UIKit/UIKit.h>
 +
 +#include <atomic>
@@ -502,9 +502,11 @@ index 0000000..467bef5
 +
 +    const CGFloat size = 38.0;
 +    const UIEdgeInsets safe = window.safeAreaInsets;
++    const CGFloat height = CGRectGetHeight(window.bounds);
++    const BOOL compact = height < 560.0;
 +    sMenuButton.frame =
 +        CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0,
-+                   safe.top + 76.0, size, size);
++                   safe.top + (compact ? 18.0 : 76.0), size, size);
 +    if (sMenuButton.superview != window) {
 +        [sMenuButton removeFromSuperview];
 +        [window addSubview:sMenuButton];

@@ -159,13 +159,22 @@ release artifact.
 ## Touch and controller playtest
 
 HarkinianPad starts with a lower-half, low-grip touch layout. The left rail has
-L/Z, a separate four-button D-pad, and a low control stick. The right rail has
-Start/R, an A/B/Z cluster, a menu button, and a separate low four-button
-C diamond. The duplicated Z control keeps the trigger reachable from either
-grip. Empty overlay space passes through to the game and menus. Open the menu
+a separate four-button D-pad and a low control stick. The right rail has
+Start/R, L directly below R, an A/B/Z cluster, a menu button, and a separate
+four-button C diamond. Z remains beside A/B for right-thumb use while moving.
+Empty overlay space passes through to the game and menus. Open the menu
 with **•••**; the gameplay overlay disappears while the menu is visible and
 returns when the menu closes. Turn it off or back on entirely under
 **Settings > Controls > Touch Controls**.
+
+An opt-in **Native HUD Touch Controls (Experimental)** setting is also
+available while the experiment is under development. It keeps the proven SDL
+input path and the existing automatically selected iPhone and iPad geometry.
+Native A, B, and C artwork uses the same live centers and visible sizes as the
+UIKit buttons it replaces. It defaults to off and must not be treated as the
+default layout until the remaining promotion matrix in
+[`native-hud-touch-experiment.md`](native-hud-touch-experiment.md) is complete.
+The current iPhone and iPad layouts are accepted for opt-in experimental use.
 
 The basic touch bridge reuses the existing bindings:
 
@@ -174,7 +183,7 @@ The basic touch bridge reuses the existing bindings:
 | Stick | W/A/S/D, including diagonals |
 | D-pad | T/G/F/H |
 | A / B | X / C |
-| L / Z (either) / R | E / Z / R |
+| L / Z / R | E / Z / R |
 | Start | Space or Return |
 | C buttons | Arrow keys |
 | Menu | Escape |
@@ -209,13 +218,18 @@ Confirm that:
    input viewer.
 2. Disabling **Touch Controls** removes the overlay immediately; enabling it
    restores the overlay without restarting.
-3. Opening the menu hides every gameplay control, and closing it restores the
+3. With **Native HUD Touch Controls (Experimental)** off, confirm the accepted
+   V1 layout is unchanged. With it on, confirm the native A/B/C graphics move
+   with their touch targets during gameplay—including the compact iPhone
+   arrangement—and the visible V1 buttons return on title, file-select, and
+   pause screens.
+4. Opening the menu hides every gameplay control, and closing it restores the
    overlay only when **Touch Controls** is enabled.
-4. A save can be created or selected and Link can be controlled in active
+5. A save can be created or selected and Link can be controlled in active
    gameplay for at least ten minutes.
-5. Disconnecting and reconnecting the controller does not crash the app and
+6. Disconnecting and reconnecting the controller does not crash the app and
    restores control without losing the current save.
-6. Rumble and motion input are recorded as supported, unsupported, or not
+7. Rumble and motion input are recorded as supported, unsupported, or not
    exposed for the exact controller model; do not infer either capability
    from the extended-gamepad declaration.
 

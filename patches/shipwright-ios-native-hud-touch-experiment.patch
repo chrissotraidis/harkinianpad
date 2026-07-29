@@ -1,0 +1,855 @@
+diff --git a/soh/ios/HarkinianPadTouchControls.h b/soh/ios/HarkinianPadTouchControls.h
+index 30ea1d3e5..1e7450d6c 100644
+--- a/soh/ios/HarkinianPadTouchControls.h
++++ b/soh/ios/HarkinianPadTouchControls.h
+@@ -8,6 +8,21 @@ int HarkinianPad_TouchControlsAvailable(void);
+ void HarkinianPad_SetTouchControlsEnabled(int enabled);
+ void HarkinianPad_SetTouchControlsMenuVisible(int visible);
+ 
++enum {
++    HARKINIANPAD_HUD_BUTTON_A = 0,
++    HARKINIANPAD_HUD_BUTTON_B,
++    HARKINIANPAD_HUD_BUTTON_C_UP,
++    HARKINIANPAD_HUD_BUTTON_C_DOWN,
++    HARKINIANPAD_HUD_BUTTON_C_LEFT,
++    HARKINIANPAD_HUD_BUTTON_C_RIGHT,
++    HARKINIANPAD_HUD_BUTTON_COUNT,
++};
++
++void HarkinianPad_SetNativeHudTouchEnabled(int enabled);
++void HarkinianPad_SetNativeHudTouchGameplayActive(int active);
++int HarkinianPad_GetNativeHudButtonCenter(int button, float aspectRatio, float* x, float* y);
++float HarkinianPad_GetNativeHudButtonScale(int button, float aspectRatio);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
+index 321462697..18b8ab399 100644
+--- a/soh/ios/HarkinianPadTouchControls.mm
++++ b/soh/ios/HarkinianPadTouchControls.mm
+@@ -5,6 +5,13 @@
+ 
+ #include "HarkinianPadTouchControls.h"
+ 
++static std::atomic_bool sTouchControlsDesired(false);
++static std::atomic_bool sTouchControlsMenuVisible(false);
++static std::atomic_bool sNativeHudTouchDesired(false);
++static std::atomic_bool sNativeHudTouchGameplayActive(false);
++static std::atomic<float> sNativeHudButtonCenters[HARKINIANPAD_HUD_BUTTON_COUNT][2];
++static std::atomic<float> sNativeHudButtonWidths[HARKINIANPAD_HUD_BUTTON_COUNT];
++
+ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+     SDL_Event event = {};
+     event.type = pressed ? SDL_KEYDOWN : SDL_KEYUP;
+@@ -25,6 +32,7 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ @property(nonatomic) SDL_Scancode scancode;
+ @property(nonatomic) BOOL inputPressed;
+ @property(nonatomic) BOOL usesPillShape;
++@property(nonatomic) BOOL nativeHudArtworkHidden;
+ @property(nonatomic, strong) UIColor* idleColor;
+ @property(nonatomic, strong) UIColor* pressedColor;
+ 
+@@ -33,6 +41,8 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+                          pill:(BOOL)pill;
+ - (void)applyIdleColor:(UIColor*)idleColor
+           pressedColor:(UIColor*)pressedColor;
++- (void)setNativeHudArtworkHidden:(BOOL)hidden;
++- (void)updateAppearance;
+ - (void)cancelInput;
+ 
+ @end
+@@ -73,7 +83,31 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+           pressedColor:(UIColor*)pressedColor {
+     self.idleColor = idleColor;
+     self.pressedColor = pressedColor;
+-    self.backgroundColor = self.inputPressed ? pressedColor : idleColor;
++    [self updateAppearance];
++}
++
++- (void)setNativeHudArtworkHidden:(BOOL)hidden {
++    if (_nativeHudArtworkHidden == hidden) {
++        return;
++    }
++    _nativeHudArtworkHidden = hidden;
++    [self updateAppearance];
++}
++
++- (void)updateAppearance {
++    if (self.nativeHudArtworkHidden) {
++        self.layer.opacity = 1.0f;
++        self.backgroundColor = UIColor.clearColor;
++        self.layer.borderColor = UIColor.clearColor.CGColor;
++        [self setTitleColor:UIColor.clearColor forState:UIControlStateNormal];
++        return;
++    }
++
++    self.layer.opacity = 1.0f;
++    self.backgroundColor = self.inputPressed ? self.pressedColor : self.idleColor;
++    self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.58].CGColor;
++    [self setTitleColor:[UIColor colorWithWhite:1.0 alpha:0.92]
++               forState:UIControlStateNormal];
+ }
+ 
+ - (void)layoutSubviews {
+@@ -88,7 +122,7 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         return;
+     }
+     self.inputPressed = YES;
+-    self.backgroundColor = self.pressedColor;
++    [self updateAppearance];
+     HarkinianPad_PushKey(self.scancode, YES);
+ }
+ 
+@@ -97,7 +131,7 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         return;
+     }
+     self.inputPressed = NO;
+-    self.backgroundColor = self.idleColor;
++    [self updateAppearance];
+     HarkinianPad_PushKey(self.scancode, NO);
+ }
+ 
+@@ -239,7 +273,6 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ @property(nonatomic, strong) HarkinianPadTouchButton* buttonA;
+ @property(nonatomic, strong) HarkinianPadTouchButton* buttonB;
+ @property(nonatomic, strong) HarkinianPadTouchButton* buttonL;
+-@property(nonatomic, strong) HarkinianPadTouchButton* buttonZLeft;
+ @property(nonatomic, strong) HarkinianPadTouchButton* buttonZRight;
+ @property(nonatomic, strong) HarkinianPadTouchButton* buttonR;
+ @property(nonatomic, strong) HarkinianPadTouchButton* buttonStart;
+@@ -253,6 +286,8 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ @property(nonatomic, strong) HarkinianPadTouchButton* cRight;
+ 
+ - (void)cancelAllInputs;
++- (void)publishNativeHudButtonCenters;
++- (void)applyNativeHudVisualState;
+ 
+ @end
+ 
+@@ -268,7 +303,6 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         self.buttonA = [[HarkinianPadTouchButton alloc] initWithLabel:@"A" scancode:SDL_SCANCODE_X pill:NO];
+         self.buttonB = [[HarkinianPadTouchButton alloc] initWithLabel:@"B" scancode:SDL_SCANCODE_C pill:NO];
+         self.buttonL = [[HarkinianPadTouchButton alloc] initWithLabel:@"L" scancode:SDL_SCANCODE_E pill:YES];
+-        self.buttonZLeft = [[HarkinianPadTouchButton alloc] initWithLabel:@"Z" scancode:SDL_SCANCODE_Z pill:NO];
+         self.buttonZRight = [[HarkinianPadTouchButton alloc] initWithLabel:@"Z" scancode:SDL_SCANCODE_Z pill:NO];
+         self.buttonR = [[HarkinianPadTouchButton alloc] initWithLabel:@"R" scancode:SDL_SCANCODE_R pill:YES];
+         self.buttonStart =
+@@ -309,7 +343,6 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         }
+ 
+         self.buttonStart.accessibilityLabel = @"Start";
+-        self.buttonZLeft.accessibilityLabel = @"Z left";
+         self.buttonZRight.accessibilityLabel = @"Z right";
+         self.dUp.accessibilityLabel = @"D-pad Up";
+         self.dDown.accessibilityLabel = @"D-pad Down";
+@@ -321,8 +354,8 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         self.cRight.accessibilityLabel = @"C Right";
+ 
+         self.buttons = @[
+-            self.buttonA, self.buttonB, self.buttonL, self.buttonZLeft,
+-            self.buttonZRight, self.buttonR, self.buttonStart,
++            self.buttonA, self.buttonB, self.buttonL, self.buttonZRight,
++            self.buttonR, self.buttonStart,
+             self.dUp, self.dDown, self.dLeft, self.dRight, self.cUp, self.cDown,
+             self.cLeft, self.cRight,
+         ];
+@@ -355,14 +388,14 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         CGFloat shoulderHeight = 44.0;
+         CGFloat shoulderWidth = 76.0;
+ 
+-        self.buttonL.frame = CGRectMake(left, top, shoulderWidth, shoulderHeight);
+-        self.buttonZLeft.frame =
+-            CGRectMake(CGRectGetMaxX(self.buttonL.frame) + 8.0, top, shoulderHeight, shoulderHeight);
+         self.buttonR.frame =
+             CGRectMake(width - right - shoulderWidth, top, shoulderWidth, shoulderHeight);
+         self.buttonStart.frame =
+             CGRectMake(CGRectGetMinX(self.buttonR.frame) - shoulderHeight - 8.0, top, shoulderHeight,
+                        shoulderHeight);
++        self.buttonL.frame =
++            CGRectMake(CGRectGetMinX(self.buttonR.frame), CGRectGetMaxY(self.buttonR.frame) + 8.0,
++                       shoulderWidth, shoulderHeight);
+ 
+         CGFloat dSize = 44.0;
+         CGFloat dRadius = 38.0;
+@@ -397,7 +430,10 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ 
+         CGFloat cSize = 40.0;
+         CGFloat cRadius = 34.0;
+-        CGPoint cCenter = CGPointMake(rightCenterX, top + shoulderHeight + 80.0);
++        // Keep conditional C-up/Navi clear of L while preserving the accepted
++        // C-button vertical placement.
++        CGFloat cCenterX = CGRectGetMinX(self.buttonL.frame) - 8.0 - cSize * 0.5;
++        CGPoint cCenter = CGPointMake(cCenterX, top + shoulderHeight + 80.0);
+         self.cUp.frame =
+             CGRectMake(cCenter.x - cSize * 0.5, cCenter.y - cRadius - cSize * 0.5, cSize, cSize);
+         self.cDown.frame =
+@@ -411,28 +447,27 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+             button.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+         }
+         self.buttonStart.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
++        [self publishNativeHudButtonCenters];
++        [self applyNativeHudVisualState];
+         return;
+     }
+ 
+     CGFloat scale = MAX(0.78, MIN(1.12, height / 834.0));
+     CGFloat edge = 18.0 * scale;
+-    CGFloat left = safe.left + edge;
+     CGFloat right = safe.right + edge;
+     CGFloat usableWidth = width - safe.left - safe.right;
+     CGFloat railWidth = MIN(250.0 * scale, usableWidth * 0.22);
+     CGFloat leftCenter = safe.left + railWidth * 0.5;
+     CGFloat rightCenter = width - safe.right - railWidth * 0.5;
+-    CGFloat gripTopY = MAX(safe.top + edge, height * 0.38);
+     CGFloat middleCenterY = height * 0.60;
+     CGFloat lowCenterY = height * 0.86;
+-    CGFloat stickCenterX = leftCenter + 65.0 * scale;
+-    CGFloat stickCenterY = lowCenterY - 70.0 * scale;
++    CGFloat stickCenterX = leftCenter + 71.0 * scale;
++    CGFloat stickCenterY = lowCenterY - 87.0 * scale;
+     CGFloat dpadCenterX = leftCenter - 30.0 * scale;
+     CGFloat dpadCenterY = middleCenterY + 5.0 * scale;
+-    CGFloat faceCenterX = rightCenter + 24.0 * scale;
+-    CGFloat faceCenterY = middleCenterY + 30.0 * scale;
+-    CGFloat cpadCenterX = rightCenter + 24.0 * scale;
+-    CGFloat cpadCenterY = lowCenterY - 20.0 * scale;
++    CGFloat faceCenterX = rightCenter - 2.0 * scale;
++    CGFloat cCenterX = rightCenter + 8.0 * scale;
++    CGFloat faceCenterY = middleCenterY + 58.0 * scale;
+ 
+     CGFloat stickSize = 150.0 * scale;
+     self.controlStick.frame =
+@@ -441,13 +476,6 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ 
+     CGFloat pillHeight = 54.0 * scale;
+     CGFloat shoulderWidth = 106.0 * scale;
+-    CGFloat leftRowY = gripTopY + 55.0 * scale;
+-    self.buttonL.frame =
+-        CGRectMake(left, leftRowY, shoulderWidth, pillHeight);
+-    self.buttonZLeft.frame =
+-        CGRectMake(CGRectGetMaxX(self.buttonL.frame) + 10.0 * scale, leftRowY,
+-                   pillHeight, pillHeight);
+-
+     CGFloat dSize = 52.0 * scale;
+     CGFloat dRadius = 48.0 * scale;
+     CGPoint dCenter = CGPointMake(dpadCenterX, dpadCenterY);
+@@ -464,7 +492,7 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         CGRectMake(dCenter.x + dRadius - dSize * 0.5,
+                    dCenter.y - dSize * 0.5, dSize, dSize);
+ 
+-    CGFloat faceSize = 66.0 * scale;
++    CGFloat faceSize = 79.2 * scale;
+     CGFloat faceX = faceCenterX - faceSize * 0.5;
+     self.buttonA.frame =
+         CGRectMake(faceX, faceCenterY + 12.0 * scale, faceSize, faceSize);
+@@ -475,29 +503,45 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         CGRectMake(faceX, faceCenterY - faceSize - 12.0 * scale,
+                    faceSize, faceSize);
+ 
+-    CGFloat cSize = 46.0 * scale;
+-    CGFloat cRadius = 44.0 * scale;
+-    CGPoint cCenter = CGPointMake(cpadCenterX, cpadCenterY);
++    CGFloat cSize = 55.2 * scale;
++    CGFloat cRadius = 58.0 * scale;
++    CGFloat faceBottom =
++        MAX(CGRectGetMaxY(self.buttonA.frame),
++            MAX(CGRectGetMaxY(self.buttonB.frame), CGRectGetMaxY(self.buttonZRight.frame)));
++    // The enlarged C diamond begins directly below the A/B/Z cluster while
++    // retaining separate rectangular hit frames.
++    CGFloat cTopGap = 12.0 * scale;
++    CGPoint cCenter =
++        CGPointMake(cCenterX, faceBottom + cTopGap + cRadius + cSize * 0.5);
++    CGFloat cUpDrop = 8.0 * scale;
+     self.cUp.frame =
+         CGRectMake(cCenter.x - cSize * 0.5,
+-                   cCenter.y - cRadius - cSize * 0.5, cSize, cSize);
++                   cCenter.y - cRadius - cSize * 0.5 + cUpDrop, cSize, cSize);
++    CGFloat cLowerClusterLift = 20.0 * scale;
+     self.cDown.frame =
+         CGRectMake(cCenter.x - cSize * 0.5,
+-                   cCenter.y + cRadius - cSize * 0.5, cSize, cSize);
++                   cCenter.y + cRadius - cSize * 0.5 - cLowerClusterLift, cSize, cSize);
+     self.cLeft.frame =
+         CGRectMake(cCenter.x - cRadius - cSize * 0.5,
+-                   cCenter.y - cSize * 0.5, cSize, cSize);
++                   cCenter.y - cSize * 0.5 - cLowerClusterLift, cSize, cSize);
+     self.cRight.frame =
+         CGRectMake(cCenter.x + cRadius - cSize * 0.5,
+-                   cCenter.y - cSize * 0.5, cSize, cSize);
++                   cCenter.y - cSize * 0.5 - cLowerClusterLift, cSize, cSize);
+ 
+-    CGFloat rightRowY = gripTopY + 55.0 * scale;
++    // Keep the shoulder stack above the face cluster: R, then L, then the
++    // right-side Z target, with matching gaps and no overlapping hit frames.
++    CGFloat shoulderGap = 12.0 * scale;
++    CGFloat rightRowY =
++        CGRectGetMinY(self.buttonZRight.frame) - pillHeight * 2.0 - shoulderGap * 2.0;
+     self.buttonR.frame =
+         CGRectMake(width - right - shoulderWidth, rightRowY, shoulderWidth,
+                    pillHeight);
+     self.buttonStart.frame =
+-        CGRectMake(CGRectGetMinX(self.buttonR.frame) - pillHeight - 12.0 * scale,
++        CGRectMake(CGRectGetMinX(self.buttonR.frame) - pillHeight - shoulderGap,
+                    rightRowY, pillHeight, pillHeight);
++    self.buttonL.frame =
++        CGRectMake(CGRectGetMinX(self.buttonR.frame), CGRectGetMaxY(self.buttonR.frame) + shoulderGap,
++                   shoulderWidth, pillHeight);
+ 
+     CGFloat labelSize = 18.0 * scale;
+     for (HarkinianPadTouchButton* button in self.buttons) {
+@@ -505,6 +549,38 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+     }
+     self.buttonStart.titleLabel.font =
+         [UIFont systemFontOfSize:18.0 * scale weight:UIFontWeightBold];
++    [self publishNativeHudButtonCenters];
++    [self applyNativeHudVisualState];
++}
++
++- (void)publishNativeHudButtonCenters {
++    const CGFloat width = CGRectGetWidth(self.bounds);
++    const CGFloat height = CGRectGetHeight(self.bounds);
++    if (width <= 0.0 || height <= 0.0) {
++        return;
++    }
++
++    NSArray<HarkinianPadTouchButton*>* nativeButtons = @[
++        self.buttonA, self.buttonB, self.cUp, self.cDown, self.cLeft, self.cRight,
++    ];
++    for (NSUInteger index = 0; index < nativeButtons.count; index++) {
++        const CGPoint center = nativeButtons[index].center;
++        sNativeHudButtonCenters[index][0].store(center.x / width);
++        sNativeHudButtonCenters[index][1].store(center.y / height);
++        sNativeHudButtonWidths[index].store(CGRectGetWidth(nativeButtons[index].frame) / height);
++    }
++}
++
++- (void)applyNativeHudVisualState {
++    const BOOL hideUIKitFaceButtons =
++        sTouchControlsDesired.load() && sNativeHudTouchDesired.load() &&
++        sNativeHudTouchGameplayActive.load() && !sTouchControlsMenuVisible.load();
++    for (HarkinianPadTouchButton* button in
++         @[ self.buttonA, self.buttonB, self.cUp, self.cDown, self.cLeft, self.cRight ]) {
++        // Hide only UIKit's artwork. The button itself stays fully opaque and
++        // interactive so touches cannot fall through to SDL's mouse mapping.
++        button.nativeHudArtworkHidden = hideUIKitFaceButtons;
++    }
+ }
+ 
+ - (void)cancelAllInputs {
+@@ -518,8 +594,6 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ 
+ static HarkinianPadTouchOverlay* sTouchOverlay;
+ static HarkinianPadTouchButton* sMenuButton;
+-static BOOL sTouchControlsDesired;
+-static std::atomic_bool sTouchControlsMenuVisible(false);
+ 
+ static UIWindow* HarkinianPad_ActiveWindow(void) {
+     for (UIScene* scene in UIApplication.sharedApplication.connectedScenes) {
+@@ -556,7 +630,8 @@ static void HarkinianPad_InstallMenuButton(UIWindow* window) {
+     if (compact) {
+         const BOOL menuVisible = sTouchControlsMenuVisible.load();
+         const CGFloat y =
+-            menuVisible ? height - safe.bottom - size - 8.0 : safe.top + 8.0;
++            menuVisible ? height - safe.bottom - size - 8.0
++                        : safe.top + 8.0;
+         sMenuButton.frame =
+             CGRectMake(CGRectGetMidX(window.bounds) - size * 0.5, y, size, size);
+         sMenuButton.autoresizingMask =
+@@ -564,7 +639,8 @@ static void HarkinianPad_InstallMenuButton(UIWindow* window) {
+             (menuVisible ? UIViewAutoresizingFlexibleTopMargin : UIViewAutoresizingFlexibleBottomMargin);
+     } else {
+         sMenuButton.frame =
+-            CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0, safe.top + 76.0, size, size);
++            CGRectMake(CGRectGetWidth(window.bounds) - safe.right - size - 8.0,
++                       safe.top + 8.0, size, size);
+         sMenuButton.autoresizingMask =
+             UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleBottomMargin;
+     }
+@@ -586,7 +662,7 @@ static void HarkinianPad_ApplyTouchControlsState(void) {
+     }
+ 
+     HarkinianPad_InstallMenuButton(window);
+-    if (!sTouchControlsDesired || sTouchControlsMenuVisible.load()) {
++    if (!sTouchControlsDesired.load() || sTouchControlsMenuVisible.load()) {
+         [sTouchOverlay cancelAllInputs];
+         [sTouchOverlay removeFromSuperview];
+         sTouchOverlay = nil;
+@@ -602,6 +678,7 @@ static void HarkinianPad_ApplyTouchControlsState(void) {
+         sTouchOverlay.frame = window.bounds;
+         [window addSubview:sTouchOverlay];
+     }
++    [sTouchOverlay applyNativeHudVisualState];
+     [window bringSubviewToFront:sTouchOverlay];
+     [window bringSubviewToFront:sMenuButton];
+ }
+@@ -612,7 +689,7 @@ int HarkinianPad_TouchControlsAvailable(void) {
+ 
+ void HarkinianPad_SetTouchControlsEnabled(int enabled) {
+     dispatch_async(dispatch_get_main_queue(), ^{
+-        sTouchControlsDesired = enabled != 0;
++        sTouchControlsDesired.store(enabled != 0);
+         HarkinianPad_ApplyTouchControlsState();
+     });
+ }
+@@ -626,3 +703,73 @@ void HarkinianPad_SetTouchControlsMenuVisible(int visible) {
+         HarkinianPad_ApplyTouchControlsState();
+     });
+ }
++
++void HarkinianPad_SetNativeHudTouchEnabled(int enabled) {
++    sNativeHudTouchDesired.store(enabled != 0);
++    dispatch_async(dispatch_get_main_queue(), ^{
++        [sTouchOverlay setNeedsLayout];
++        [sTouchOverlay layoutIfNeeded];
++        [sTouchOverlay applyNativeHudVisualState];
++        UIWindow* window = HarkinianPad_ActiveWindow();
++        if (window != nil) {
++            HarkinianPad_InstallMenuButton(window);
++        }
++    });
++}
++
++void HarkinianPad_SetNativeHudTouchGameplayActive(int active) {
++    const bool gameplayActive = active != 0;
++    if (sNativeHudTouchGameplayActive.exchange(gameplayActive) == gameplayActive) {
++        return;
++    }
++    dispatch_async(dispatch_get_main_queue(), ^{
++        [sTouchOverlay setNeedsLayout];
++        [sTouchOverlay layoutIfNeeded];
++        [sTouchOverlay applyNativeHudVisualState];
++        UIWindow* window = HarkinianPad_ActiveWindow();
++        if (window != nil) {
++            HarkinianPad_InstallMenuButton(window);
++        }
++    });
++}
++
++int HarkinianPad_GetNativeHudButtonCenter(int button, float aspectRatio, float* x, float* y) {
++    if (button < 0 || button >= HARKINIANPAD_HUD_BUTTON_COUNT || x == nullptr || y == nullptr ||
++        aspectRatio <= 0.0f || !sTouchControlsDesired.load() || !sNativeHudTouchDesired.load() ||
++        !sNativeHudTouchGameplayActive.load() || sTouchControlsMenuVisible.load()) {
++        return 0;
++    }
++
++    const float normalizedX = sNativeHudButtonCenters[button][0].load();
++    const float normalizedY = sNativeHudButtonCenters[button][1].load();
++    if (normalizedX <= 0.0f || normalizedX >= 1.0f || normalizedY <= 0.0f || normalizedY >= 1.0f) {
++        return 0;
++    }
++
++    const float virtualWidth = 240.0f * aspectRatio;
++    const float virtualLeft = 160.0f - virtualWidth * 0.5f;
++    *x = virtualLeft + normalizedX * virtualWidth;
++    *y = normalizedY * 240.0f;
++    return 1;
++}
++
++float HarkinianPad_GetNativeHudButtonScale(int button, float aspectRatio) {
++    if (button < 0 || button >= HARKINIANPAD_HUD_BUTTON_COUNT || aspectRatio <= 0.0f ||
++        !sTouchControlsDesired.load() || !sNativeHudTouchDesired.load() ||
++        !sNativeHudTouchGameplayActive.load() || sTouchControlsMenuVisible.load()) {
++        return 1.0f;
++    }
++
++    // C-up/Navi is natively drawn at 16 points; the other C buttons use
++    // their 27-point draw size.
++    static const float nativeButtonWidths[] = {
++        29.0f, 30.0f, 16.0f, 27.0f, 27.0f, 27.0f,
++    };
++    const float normalizedWidth = sNativeHudButtonWidths[button].load();
++    if (normalizedWidth <= 0.0f || normalizedWidth >= 1.0f) {
++        return 1.0f;
++    }
++
++    const float virtualWidth = normalizedWidth * 240.0f;
++    return virtualWidth / nativeButtonWidths[button];
++}
+diff --git a/soh/soh/Enhancements/bootcommands.c b/soh/soh/Enhancements/bootcommands.c
+index c17f48d72..276cfa65d 100644
+--- a/soh/soh/Enhancements/bootcommands.c
++++ b/soh/soh/Enhancements/bootcommands.c
+@@ -21,5 +21,8 @@ void BootCommands_Init() {
+     CVarRegisterInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1);
+     HarkinianPad_SetTouchControlsEnabled(
+         CVarGetInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1));
++    CVarRegisterInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), 0);
++    HarkinianPad_SetNativeHudTouchEnabled(
++        CVarGetInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), 0));
+ #endif
+ }
+diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
+index d2acee895..8a2039048 100644
+--- a/soh/soh/SohGui/SohMenuSettings.cpp
++++ b/soh/soh/SohGui/SohMenuSettings.cpp
+@@ -454,6 +454,20 @@ void SohMenu::AddMenuSettings() {
+         .Options(CheckboxOptions()
+                      .DefaultValue(true)
+                      .Tooltip("Shows the low-grip touch controller. Disable it when using a physical controller."));
++    AddWidget(path, "Native HUD Touch Controls (Experimental)", WIDGET_CVAR_CHECKBOX)
++        .CVar(CVAR_SETTING("HarkinianPad.NativeHudTouch"))
++        .RaceDisable(false)
++        .PreFunc([](WidgetInfo& info) {
++            info.isHidden = !HarkinianPad_TouchControlsAvailable();
++        })
++        .Callback([](WidgetInfo& info) {
++            HarkinianPad_SetNativeHudTouchEnabled(
++                CVarGetInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), 0));
++        })
++        .Options(CheckboxOptions()
++                     .DefaultValue(false)
++                     .Tooltip("Experimental: uses the in-game A, B, and C HUD graphics over the existing touch "
++                              "targets during gameplay. Touch Controls must remain enabled."));
+ #endif
+     AddWidget(path, "Clear Devices", WIDGET_BUTTON)
+         .Callback([](WidgetInfo& info) {
+diff --git a/soh/src/code/z_parameter.c b/soh/src/code/z_parameter.c
+index 34037b666..cc5b81de7 100644
+--- a/soh/src/code/z_parameter.c
++++ b/soh/src/code/z_parameter.c
+@@ -20,6 +20,10 @@
+ #include "soh/Enhancements/randomizer/randomizer_grotto.h"
+ #include "soh/OTRGlobals.h"
+ #include "soh/ResourceManagerHelpers.h"
++
++#ifdef __IOS__
++#include "ios/HarkinianPadTouchControls.h"
++#endif
+ #include "soh/Enhancements/gameplaystats.h"
+ #include "soh/ObjectExtension/ActorMaximumHealth.h"
+ 
+@@ -4139,6 +4143,70 @@ void Interface_DrawItemButtons(PlayState* play) {
+         C_Down_BTN_Pos[0] = OTRGetRectDimensionFromRightEdge(C_Down_BTN_Pos_ori[0]);
+     }
+ 
++    int CLeftDrawSize = R_ITEM_BTN_WIDTH(1);
++    int CDownDrawSize = R_ITEM_BTN_WIDTH(2);
++    int CRightDrawSize = R_ITEM_BTN_WIDTH(3);
++    int CLeftDrawDD = R_ITEM_BTN_DD(1) << 1;
++    int CDownDrawDD = R_ITEM_BTN_DD(2) << 1;
++    int CRightDrawDD = R_ITEM_BTN_DD(3) << 1;
++    float nativeHudBScale = 1.0f;
++    float nativeHudCScale = 1.0f;
++#ifdef __IOS__
++    nativeHudBScale =
++        HarkinianPad_GetNativeHudButtonScale(HARKINIANPAD_HUD_BUTTON_B, OTRGetAspectRatio());
++    nativeHudCScale =
++        HarkinianPad_GetNativeHudButtonScale(HARKINIANPAD_HUD_BUTTON_C_LEFT, OTRGetAspectRatio());
++    if (nativeHudBScale != 1.0f) {
++        BBtnScaled = MAX(1, BBtnScaled * nativeHudBScale);
++        BBtn_factor = (1 << 10) * BBtn_Size / BBtnScaled;
++    }
++    if (nativeHudCScale != 1.0f) {
++        CLeftScaled = MAX(1, CLeftScaled * nativeHudCScale);
++        CRightScaled = MAX(1, CRightScaled * nativeHudCScale);
++        CUpScaled = MAX(1, CUpScaled * nativeHudCScale);
++        CDownScaled = MAX(1, CDownScaled * nativeHudCScale);
++        CLeft_factor = (1 << 10) * C_Left_BTN_Size / CLeftScaled;
++        CRight_factor = (1 << 10) * C_Right_BTN_Size / CRightScaled;
++        CUp_factor = (1 << 10) * C_Up_BTN_Size / CUpScaled;
++        CDown_factor = (1 << 10) * C_Down_BTN_Size / CDownScaled;
++        PositionAdjustment = CDownScaled / 2;
++        CLeftDrawSize = CLeftScaled;
++        CDownDrawSize = CDownScaled;
++        CRightDrawSize = CRightScaled;
++        CLeftDrawDD = CLeft_factor;
++        CDownDrawDD = CDown_factor;
++        CRightDrawDD = CRight_factor;
++    }
++
++    float nativeHudX;
++    float nativeHudY;
++    if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_B, OTRGetAspectRatio(), &nativeHudX,
++                                               &nativeHudY)) {
++        PosX_BtnB = nativeHudX - BBtnScaled * 0.5f;
++        PosY_BtnB = nativeHudY - BBtnScaled * 0.5f;
++    }
++    if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_C_LEFT, OTRGetAspectRatio(), &nativeHudX,
++                                               &nativeHudY)) {
++        C_Left_BTN_Pos[0] = nativeHudX - CLeftScaled * 0.5f;
++        C_Left_BTN_Pos[1] = nativeHudY - CLeftScaled * 0.5f;
++    }
++    if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_C_RIGHT, OTRGetAspectRatio(), &nativeHudX,
++                                               &nativeHudY)) {
++        C_Right_BTN_Pos[0] = nativeHudX - CRightScaled * 0.5f;
++        C_Right_BTN_Pos[1] = nativeHudY - CRightScaled * 0.5f;
++    }
++    if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_C_UP, OTRGetAspectRatio(), &nativeHudX,
++                                               &nativeHudY)) {
++        C_Up_BTN_Pos[0] = nativeHudX - CUpScaled * 0.5f;
++        C_Up_BTN_Pos[1] = nativeHudY - CUpScaled * 0.5f;
++    }
++    if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_C_DOWN, OTRGetAspectRatio(), &nativeHudX,
++                                               &nativeHudY)) {
++        C_Down_BTN_Pos[0] = nativeHudX - CDownScaled * 0.5f;
++        C_Down_BTN_Pos[1] = nativeHudY - CDownScaled * 0.5f;
++    }
++#endif
++
+     OPEN_DISPS(play->state.gfxCtx);
+ 
+     // B Button Color & Texture
+@@ -4156,25 +4224,25 @@ void Interface_DrawItemButtons(PlayState* play) {
+     gDPSetPrimColor(OVERLAY_DISP++, 0, 0, cLeftButtonColor.r, cLeftButtonColor.g, cLeftButtonColor.b,
+                     interfaceCtx->cLeftAlpha);
+     gSPWideTextureRectangle(OVERLAY_DISP++, C_Left_BTN_Pos[0] << 2, C_Left_BTN_Pos[1] << 2,
+-                            (C_Left_BTN_Pos[0] + R_ITEM_BTN_WIDTH(1)) << 2,
+-                            (C_Left_BTN_Pos[1] + R_ITEM_BTN_WIDTH(1)) << 2, G_TX_RENDERTILE, 0, 0,
+-                            R_ITEM_BTN_DD(1) << 1, R_ITEM_BTN_DD(1) << 1);
++                            (C_Left_BTN_Pos[0] + CLeftDrawSize) << 2,
++                            (C_Left_BTN_Pos[1] + CLeftDrawSize) << 2, G_TX_RENDERTILE, 0, 0,
++                            CLeftDrawDD, CLeftDrawDD);
+ 
+     // C-Down Button Color & Texture
+     gDPSetPrimColor(OVERLAY_DISP++, 0, 0, cDownButtonColor.r, cDownButtonColor.g, cDownButtonColor.b,
+                     interfaceCtx->cDownAlpha);
+     gSPWideTextureRectangle(OVERLAY_DISP++, C_Down_BTN_Pos[0] << 2, C_Down_BTN_Pos[1] << 2,
+-                            (C_Down_BTN_Pos[0] + R_ITEM_BTN_WIDTH(2)) << 2,
+-                            (C_Down_BTN_Pos[1] + R_ITEM_BTN_WIDTH(2)) << 2, G_TX_RENDERTILE, 0, 0,
+-                            R_ITEM_BTN_DD(2) << 1, R_ITEM_BTN_DD(2) << 1);
++                            (C_Down_BTN_Pos[0] + CDownDrawSize) << 2,
++                            (C_Down_BTN_Pos[1] + CDownDrawSize) << 2, G_TX_RENDERTILE, 0, 0,
++                            CDownDrawDD, CDownDrawDD);
+ 
+     // C-Right Button Color & Texture
+     gDPSetPrimColor(OVERLAY_DISP++, 0, 0, cRightButtonColor.r, cRightButtonColor.g, cRightButtonColor.b,
+                     interfaceCtx->cRightAlpha);
+     gSPWideTextureRectangle(OVERLAY_DISP++, C_Right_BTN_Pos[0] << 2, C_Right_BTN_Pos[1] << 2,
+-                            (C_Right_BTN_Pos[0] + R_ITEM_BTN_WIDTH(3)) << 2,
+-                            (C_Right_BTN_Pos[1] + R_ITEM_BTN_WIDTH(3)) << 2, G_TX_RENDERTILE, 0, 0,
+-                            R_ITEM_BTN_DD(3) << 1, R_ITEM_BTN_DD(3) << 1);
++                            (C_Right_BTN_Pos[0] + CRightDrawSize) << 2,
++                            (C_Right_BTN_Pos[1] + CRightDrawSize) << 2, G_TX_RENDERTILE, 0, 0,
++                            CRightDrawDD, CRightDrawDD);
+ 
+     if ((pauseCtx->state < 8) || (pauseCtx->state >= 18)) {
+         if ((play->pauseCtx.state != 0) || (play->pauseCtx.debugState != 0)) {
+@@ -4233,8 +4301,9 @@ void Interface_DrawItemButtons(PlayState* play) {
+             gDPSetPrimColor(OVERLAY_DISP++, 0, 0, cUpButtonColor.r, cUpButtonColor.g, cUpButtonColor.b, temp);
+             gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+             gSPWideTextureRectangle(OVERLAY_DISP++, C_Up_BTN_Pos[0] << 2, C_Up_BTN_Pos[1] << 2,
+-                                    (C_Up_BTN_Pos[0] + 16) << 2, (C_Up_BTN_Pos[1] + 16) << 2, G_TX_RENDERTILE, 0, 0,
+-                                    2 << 10, 2 << 10);
++                                    (C_Up_BTN_Pos[0] + CUpScaled) << 2,
++                                    (C_Up_BTN_Pos[1] + CUpScaled) << 2, G_TX_RENDERTILE, 0, 0,
++                                    CUp_factor, CUp_factor);
+             gDPPipeSync(OVERLAY_DISP++);
+             gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, temp);
+             gDPSetEnvColor(OVERLAY_DISP++, 0, 0, 0, 0);
+@@ -4245,9 +4314,15 @@ void Interface_DrawItemButtons(PlayState* play) {
+                                    G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK,
+                                    G_TX_NOLOD, G_TX_NOLOD);
+ 
+-            gSPWideTextureRectangle(OVERLAY_DISP++, C_Up_BTN_Pos[0] - LabelX_Navi << 2,
+-                                    C_Up_BTN_Pos[1] + LabelY_Navi << 2, (C_Up_BTN_Pos[0] - LabelX_Navi + 32) << 2,
+-                                    (C_Up_BTN_Pos[1] + LabelY_Navi + 8) << 2, G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
++            const s16 naviLabelWidth = MAX(1, 32 * nativeHudCScale);
++            const s16 naviLabelHeight = MAX(1, 8 * nativeHudCScale);
++            const s16 naviLabelX = C_Up_BTN_Pos[0] + (CUpScaled - naviLabelWidth) / 2;
++            const s16 naviLabelY = C_Up_BTN_Pos[1] + MAX(1, LabelY_Navi * nativeHudCScale);
++            gSPWideTextureRectangle(
++                OVERLAY_DISP++, naviLabelX << 2, naviLabelY << 2,
++                (naviLabelX + naviLabelWidth) << 2, (naviLabelY + naviLabelHeight) << 2,
++                G_TX_RENDERTILE, 0, 0, (1 << 10) * 32 / naviLabelWidth,
++                (1 << 10) * 8 / naviLabelHeight);
+         }
+ 
+         sCUpTimer--;
+@@ -4379,6 +4454,21 @@ void Interface_DrawItemButtons(PlayState* play) {
+                 ItemIconPos[2][1] = ItemIconPos_ori[2][1];
+             }
+ 
++#ifdef __IOS__
++            static const s16 nativeHudButtons[] = {
++                HARKINIANPAD_HUD_BUTTON_C_LEFT,
++                HARKINIANPAD_HUD_BUTTON_C_DOWN,
++                HARKINIANPAD_HUD_BUTTON_C_RIGHT,
++            };
++            float nativeHudX;
++            float nativeHudY;
++            if (HarkinianPad_GetNativeHudButtonCenter(nativeHudButtons[temp - 1], OTRGetAspectRatio(), &nativeHudX,
++                                                       &nativeHudY)) {
++                ItemIconPos[temp - 1][0] = nativeHudX - ItemIconWidthFactor[temp - 1][0] * 0.5f;
++                ItemIconPos[temp - 1][1] = nativeHudY - ItemIconWidthFactor[temp - 1][0] * 0.5f;
++            }
++#endif
++
+             if (temp == 1) {
+                 gDPSetPrimColor(OVERLAY_DISP++, 0, 0, cLeftButtonColor.r, cLeftButtonColor.g, cLeftButtonColor.b,
+                                 interfaceCtx->cLeftAlpha);
+@@ -4640,13 +4730,37 @@ void Interface_DrawItemIconTexture(PlayState* play, void* texture, s16 button) {
+         ItemIconPos[3][1] = ItemIconPos_ori[3][1];
+     }
+ 
++    s16 nativeHudItemWidth = gItemIconWidth[button];
++    s16 nativeHudItemDD = gItemIconDD[button];
++#ifdef __IOS__
++    static const s16 nativeHudButtons[] = {
++        HARKINIANPAD_HUD_BUTTON_B,
++        HARKINIANPAD_HUD_BUTTON_C_LEFT,
++        HARKINIANPAD_HUD_BUTTON_C_DOWN,
++        HARKINIANPAD_HUD_BUTTON_C_RIGHT,
++    };
++    if (button >= 0 && button < 4) {
++        float nativeHudX;
++        float nativeHudY;
++        if (HarkinianPad_GetNativeHudButtonCenter(nativeHudButtons[button], OTRGetAspectRatio(), &nativeHudX,
++                                                   &nativeHudY)) {
++            const float nativeHudScale =
++                HarkinianPad_GetNativeHudButtonScale(nativeHudButtons[button], OTRGetAspectRatio());
++            nativeHudItemWidth = MAX(1, gItemIconWidth[button] * nativeHudScale);
++            nativeHudItemDD = (1 << 9) * 32 / nativeHudItemWidth;
++            ItemIconPos[button][0] = nativeHudX - nativeHudItemWidth * 0.5f;
++            ItemIconPos[button][1] = nativeHudY - nativeHudItemWidth * 0.5f;
++        }
++    }
++#endif
++
+     gDPLoadTextureBlock(OVERLAY_DISP++, texture, G_IM_FMT_RGBA, G_IM_SIZ_32b, 32, 32, 0, G_TX_NOMIRROR | G_TX_WRAP,
+                         G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+ 
+     gSPWideTextureRectangle(OVERLAY_DISP++, ItemIconPos[button][0] << 2, ItemIconPos[button][1] << 2,
+-                            (ItemIconPos[button][0] + gItemIconWidth[button]) << 2,
+-                            (ItemIconPos[button][1] + gItemIconWidth[button]) << 2, G_TX_RENDERTILE, 0, 0,
+-                            gItemIconDD[button] << 1, gItemIconDD[button] << 1);
++                            (ItemIconPos[button][0] + nativeHudItemWidth) << 2,
++                            (ItemIconPos[button][1] + nativeHudItemWidth) << 2, G_TX_RENDERTILE, 0, 0,
++                            nativeHudItemDD << 1, nativeHudItemDD << 1);
+ 
+     CLOSE_DISPS(play->state.gfxCtx);
+ }
+@@ -4889,6 +5003,28 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
+         ItemIconPos[3][1] = ItemIconPos_ori[3][1];
+     }
+ 
++#ifdef __IOS__
++    static const s16 nativeHudButtons[] = {
++        HARKINIANPAD_HUD_BUTTON_B,
++        HARKINIANPAD_HUD_BUTTON_C_LEFT,
++        HARKINIANPAD_HUD_BUTTON_C_DOWN,
++        HARKINIANPAD_HUD_BUTTON_C_RIGHT,
++    };
++    static const s16 nativeButtonSizes[] = { 30, 27, 27, 27 };
++    if (button >= 0 && button < 4) {
++        float nativeHudX;
++        float nativeHudY;
++        if (HarkinianPad_GetNativeHudButtonCenter(nativeHudButtons[button], OTRGetAspectRatio(), &nativeHudX,
++                                                   &nativeHudY)) {
++            const float nativeHudScale =
++                HarkinianPad_GetNativeHudButtonScale(nativeHudButtons[button], OTRGetAspectRatio());
++            const float nativeButtonSize = nativeButtonSizes[button] * nativeHudScale;
++            ItemIconPos[button][0] = nativeHudX - nativeButtonSize * 0.5f + 1;
++            ItemIconPos[button][1] = nativeHudY - nativeButtonSize * 0.5f + MAX(12.0f, 17.0f * nativeHudScale);
++        }
++    }
++#endif
++
+     OPEN_DISPS(play->state.gfxCtx);
+ 
+     i = gSaveContext.equips.buttonItems[button];
+@@ -4946,11 +5082,16 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
+ 
+ void Interface_DrawActionButton(PlayState* play, f32 x, f32 y) {
+     InterfaceContext* interfaceCtx = &play->interfaceCtx;
++    float nativeHudButtonScale = 1.0f;
++#ifdef __IOS__
++    nativeHudButtonScale =
++        HarkinianPad_GetNativeHudButtonScale(HARKINIANPAD_HUD_BUTTON_A, OTRGetAspectRatio());
++#endif
+ 
+     OPEN_DISPS(play->state.gfxCtx);
+ 
+     Matrix_Translate(-137.0f + x, 97.0f - y, XREG(18) / 10.0f, MTXMODE_NEW);
+-    Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
++    Matrix_Scale(nativeHudButtonScale, nativeHudButtonScale, nativeHudButtonScale, MTXMODE_APPLY);
+     Matrix_RotateX(interfaceCtx->unk_1F4 / 10000.0f, MTXMODE_APPLY);
+ 
+     gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_MODELVIEW | G_MTX_LOAD);
+@@ -5142,6 +5283,10 @@ void Interface_Draw(PlayState* play) {
+     s16 svar5;
+     s16 timerId;
+     bool fullUi = !CVarGetInteger(CVAR_ENHANCEMENT("MinimalUI"), 0) || !R_MINIMAP_DISABLED || play->pauseCtx.state != 0;
++#ifdef __IOS__
++    HarkinianPad_SetNativeHudTouchGameplayActive(gSaveContext.gameMode == GAMEMODE_NORMAL && fullUi &&
++                                                  pauseCtx->state == 0 && pauseCtx->debugState == 0);
++#endif
+     // #region SOH [NTSC]
+     s32 languageOffset = gSaveContext.language;
+ 
+@@ -5511,6 +5656,15 @@ void Interface_Draw(PlayState* play) {
+                 BbtnPosX = OTRGetRectDimensionFromRightEdge(R_B_LABEL_X(languageOffset) + X_Margins_BtnB_label);
+                 BbtnPosY = R_B_LABEL_Y(languageOffset) + Y_Margins_BtnB_label;
+             }
++#ifdef __IOS__
++            float nativeHudX;
++            float nativeHudY;
++            if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_B, OTRGetAspectRatio(), &nativeHudX,
++                                                       &nativeHudY)) {
++                BbtnPosX = nativeHudX - 15 + PosX_adjust;
++                BbtnPosY = nativeHudY - 15 + PosY_adjust;
++            }
++#endif
+             gDPPipeSync(OVERLAY_DISP++);
+             gDPSetCombineLERP(OVERLAY_DISP++, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0,
+                               PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, TEXEL0, 0, PRIMITIVE, 0);
+@@ -5716,6 +5870,24 @@ void Interface_Draw(PlayState* play) {
+             rAIconY = rAIconY_ori;
+             rAIconX = rAIconX_ori;
+         }
++        float nativeHudButtonScale = 1.0f;
++#ifdef __IOS__
++        float nativeHudX;
++        float nativeHudY;
++        if (HarkinianPad_GetNativeHudButtonCenter(HARKINIANPAD_HUD_BUTTON_A, OTRGetAspectRatio(), &nativeHudX,
++                                                   &nativeHudY)) {
++            nativeHudButtonScale =
++                HarkinianPad_GetNativeHudButtonScale(HARKINIANPAD_HUD_BUTTON_A, OTRGetAspectRatio());
++            // Interface_DrawActionButton's legacy coordinate path places the
++            // centered action quad 23 points beyond PosX/PosY. Compensate for
++            // that fixed offset rather than treating PosX/PosY as the
++            // texture's scaled top-left corner.
++            PosX_BtnA = nativeHudX - 23.0f;
++            PosY_BtnA = nativeHudY - 23.0f;
++            rAIconX = PosX_BtnA;
++            rAIconY = 98.0f - PosY_BtnA;
++        }
++#endif
+         gSPClearGeometryMode(OVERLAY_DISP++, G_CULL_BOTH);
+         gDPSetCombineMode(OVERLAY_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+         gDPSetPrimColor(OVERLAY_DISP++, 0, 0, aButtonColor.r, aButtonColor.g, aButtonColor.b, interfaceCtx->aAlpha);
+@@ -5729,7 +5901,7 @@ void Interface_Draw(PlayState* play) {
+         gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, interfaceCtx->aAlpha);
+         gDPSetEnvColor(OVERLAY_DISP++, 0, 0, 0, 0);
+         Matrix_Translate(-138.0f + rAIconX, rAIconY, WREG(46 + languageOffset) / 10.0f, MTXMODE_NEW);
+-        Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
++        Matrix_Scale(nativeHudButtonScale, nativeHudButtonScale, nativeHudButtonScale, MTXMODE_APPLY);
+         Matrix_RotateX(interfaceCtx->unk_1F4 / 10000.0f, MTXMODE_APPLY);
+         gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_MODELVIEW | G_MTX_LOAD);
+         gSPVertex(OVERLAY_DISP++, &interfaceCtx->actionVtx[4], 4, 0);
+diff --git a/soh/src/code/z_play.c b/soh/src/code/z_play.c
+index 843fa301e..f69e8bc73 100644
+--- a/soh/src/code/z_play.c
++++ b/soh/src/code/z_play.c
+@@ -14,6 +14,10 @@
+ #include "soh/SaveManager.h"
+ #include "soh/framebuffer_effects.h"
+ 
++#ifdef __IOS__
++#include "ios/HarkinianPadTouchControls.h"
++#endif
++
+ #include <time.h>
+ #include <assert.h>
+ 
+@@ -198,6 +202,10 @@ void Play_Destroy(GameState* thisx) {
+     PlayState* play = (PlayState*)thisx;
+     Player* player = GET_PLAYER(play);
+ 
++#ifdef __IOS__
++    HarkinianPad_SetNativeHudTouchGameplayActive(0);
++#endif
++
+     GameInteractor_ExecuteOnPlayDestroy();
+ 
+     play->state.gfxCtx->callback = NULL;

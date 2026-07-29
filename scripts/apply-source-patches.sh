@@ -53,8 +53,19 @@ fi
 
 apply_patch "$SHIPWRIGHT" \
     "$ROOT/patches/shipwright-ios-app-icon.patch"
-apply_patch "$SHIPWRIGHT" \
-    "$ROOT/patches/shipwright-ios-touch-controls.patch"
+
+# The experiment layers on the stable touch patch and changes some of the same
+# files. Detect the final state first so rerunning remains idempotent.
+if git -C "$SHIPWRIGHT" apply --reverse --check \
+    "$ROOT/patches/shipwright-ios-native-hud-touch-experiment.patch" 2>/dev/null; then
+    echo "Already applied: shipwright-ios-touch-controls.patch"
+    echo "Already applied: shipwright-ios-native-hud-touch-experiment.patch"
+else
+    apply_patch "$SHIPWRIGHT" \
+        "$ROOT/patches/shipwright-ios-touch-controls.patch"
+    apply_patch "$SHIPWRIGHT" \
+        "$ROOT/patches/shipwright-ios-native-hud-touch-experiment.patch"
+fi
 
 APP_ICON_SOURCE="$ROOT/assets/AppIcon.appiconset"
 APP_ICON_DESTINATION="$SHIPWRIGHT/soh/ios/Assets.xcassets/AppIcon.appiconset"

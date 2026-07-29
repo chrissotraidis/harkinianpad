@@ -26,16 +26,17 @@ ornament.
 ┌──────────────────────────────────────────────────────────────┐
 │                                                    [•••]     │
 │                                                              │
-│  [ L ] [ Z ]                               [Start] [ R ]      │
-│  (small D-pad)                               ( B ) ( Z )       │
+│  (small D-pad)                            [Start] [ R ]        │
+│                                                   [ L ]        │
+│                                              ( B ) ( Z )       │
 │       ( control stick )                         ( A )          │
 │                                            (small C diamond)   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 - Gameplay controls stay in the lower half of a landscape iPad.
-- L/Z and Start/R sit below the menu content line, within reach while holding
-  the side edges.
+- Start/R sit below the menu content line. L uses the same pill size directly
+  below R; the redundant left-side Z target is removed.
 - The compact D-pad sits left of the raised control stick. On iPhone, the
   D-pad and C-button rows sit slightly above the face cluster so adjacent
   controls do not intersect.
@@ -47,8 +48,8 @@ ornament.
   Shipwright menu is open on iPhone, it moves to bottom center so it does not
   cover the Settings, Enhancements, Randomizer, or Dev Tools tabs. It remains
   available when gameplay touch controls are disabled.
-- Z is intentionally duplicated in the left shoulder row and right face
-  cluster; both copies emit the same binding.
+- Z remains in the right face cluster where it can be held with the movement
+  stick.
 - iPhone uses a dedicated compact grip layout instead of shrinking the iPad
   geometry proportionally.
 - Empty overlay space passes touches through to menus, but synthetic
@@ -106,7 +107,7 @@ the reference for final gameplay feel.
 - A brighter fill while pressed.
 - No textures, custom assets, haptics, editor, or resize system.
 
-## Future native HUD touch experiment
+## Native HUD touch experiment
 
 Do not replace the current UIKit controls until a native-HUD prototype passes
 on both iPhone and iPad. Shipwright already supports separate positions for
@@ -116,13 +117,21 @@ is not implemented consistently.
 The smallest reversible prototype should:
 
 - keep the current UIKit input path and layouts as the fallback;
-- render enlarged native A/B/C graphics over transparent UIKit hit targets
-  during gameplay;
+- render native A/B/C graphics over transparent UIKit hit targets during
+  gameplay at the same live centers and visible sizes as the UIKit artwork;
 - restore the visible UIKit buttons whenever the gameplay HUD is unavailable,
-  including title, file-select, pause, and menu states;
-- use separate automatically selected iPhone and iPad position presets; and
+  including title, file-select, and pause states;
+- preserve the established behavior of hiding the complete gameplay overlay
+  while the Shipwright menu is open;
+- reuse the automatically selected V1 iPhone and iPad layouts without a second
+  experimental position preset; and
 - keep C-up discoverable for normal input while preserving Navi's conditional
   prompt behavior.
+
+The first opt-in implementation is tracked in
+[`native-hud-touch-experiment.md`](native-hud-touch-experiment.md). It is
+default-off and leaves this V1 layout unchanged. iPhone and iPad experimental
+gameplay changes only the A/B/C rendering; geometry remains identical to V1.
 
 Simulator proof is necessary for layout work, but final acceptance requires
 physical gameplay on both device classes.
@@ -130,7 +139,7 @@ physical gameplay on both device classes.
 ## Acceptance checks
 
 1. Simulator and unsigned device builds still link.
-2. A clean landscape launch displays all 16 discrete buttons plus the stick,
+2. A clean landscape launch displays all 15 discrete buttons plus the stick,
    with separate, non-overlapping D-pad, stick, face-button, and C-button
    groups in the lower half.
 3. Start advances the title screen and A/B navigate file select.

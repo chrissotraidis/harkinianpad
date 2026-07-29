@@ -294,6 +294,7 @@ redistributable open source without resolving that boundary.
 | [`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md) | Developer-preview IPA installation with AltStore Classic |
 | [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | Source and IPA publication gates |
 | [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout and input contract |
+| [`docs/native-hud-touch-experiment.md`](docs/native-hud-touch-experiment.md) | Opt-in native HUD touch experiment and living test log |
 | [`docs/remaining-work.md`](docs/remaining-work.md) | Evidence ledger and remaining gates |
 | [`ref/`](ref/) | Ignored local reference area; only its safety README is tracked |
 

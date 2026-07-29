@@ -7,6 +7,10 @@
 </p>
 
 <p align="center">
+  <a href="https://www.buymeacoffee.com/chrissotraidis"><img alt="Buy me a coffee" src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="36"></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/chrissotraidis/harkinianpad/actions/workflows/ios-build.yml"><img alt="HarkinianPad iOS build" src="https://github.com/chrissotraidis/harkinianpad/actions/workflows/ios-build.yml/badge.svg"></a>
   <img alt="iOS 14+" src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-14%2B-0A84FF?logo=apple">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">

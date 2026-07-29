@@ -1,0 +1,917 @@
+diff --git a/soh/ios/HarkinianPadTouchControls.h b/soh/ios/HarkinianPadTouchControls.h
+index 1e7450d6c..493db1607 100644
+--- a/soh/ios/HarkinianPadTouchControls.h
++++ b/soh/ios/HarkinianPadTouchControls.h
+@@ -6,6 +6,8 @@ extern "C" {
+ 
+ int HarkinianPad_TouchControlsAvailable(void);
+ void HarkinianPad_SetTouchControlsEnabled(int enabled);
++void HarkinianPad_SetCustomizableTouchControlsEnabled(int enabled);
++void HarkinianPad_BeginTouchLayoutEditing(void);
+ void HarkinianPad_SetTouchControlsMenuVisible(int visible);
+ 
+ enum {
+diff --git a/soh/ios/HarkinianPadTouchControls.mm b/soh/ios/HarkinianPadTouchControls.mm
+index 18b8ab399..954e06329 100644
+--- a/soh/ios/HarkinianPadTouchControls.mm
++++ b/soh/ios/HarkinianPadTouchControls.mm
+@@ -1,12 +1,16 @@
+ #import <UIKit/UIKit.h>
+ 
++#include <algorithm>
+ #include <atomic>
+ #include <SDL.h>
+ 
+ #include "HarkinianPadTouchControls.h"
+ 
+ static std::atomic_bool sTouchControlsDesired(false);
++static std::atomic_bool sCustomizableTouchControlsDesired(false);
+ static std::atomic_bool sTouchControlsMenuVisible(false);
++static std::atomic_bool sLayoutEditorActive(false);
++static BOOL sLayoutEditorRequested;
+ static std::atomic_bool sNativeHudTouchDesired(false);
+ static std::atomic_bool sNativeHudTouchGameplayActive(false);
+ static std::atomic<float> sNativeHudButtonCenters[HARKINIANPAD_HUD_BUTTON_COUNT][2];
+@@ -31,6 +35,10 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ 
+ @property(nonatomic) SDL_Scancode scancode;
+ @property(nonatomic) BOOL inputPressed;
++@property(nonatomic) BOOL inputLatched;
++@property(nonatomic) BOOL holdToLatch;
++@property(nonatomic) NSUInteger latchGeneration;
++@property(nonatomic) BOOL layoutEditing;
+ @property(nonatomic) BOOL usesPillShape;
+ @property(nonatomic) BOOL nativeHudArtworkHidden;
+ @property(nonatomic, strong) UIColor* idleColor;
+@@ -70,7 +78,10 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ 
+         [self addTarget:self
+                       action:@selector(inputDown)
+-            forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
++            forControlEvents:UIControlEventTouchDown];
++        [self addTarget:self
++                      action:@selector(inputDragEnter)
++            forControlEvents:UIControlEventTouchDragEnter];
+         [self addTarget:self
+                       action:@selector(inputUp)
+             forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside |
+@@ -104,12 +115,28 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+     }
+ 
+     self.layer.opacity = 1.0f;
+-    self.backgroundColor = self.inputPressed ? self.pressedColor : self.idleColor;
+-    self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.58].CGColor;
++    self.backgroundColor =
++        self.inputLatched
++            ? [UIColor colorWithRed:0.22 green:0.58 blue:0.96 alpha:0.92]
++            : (self.inputPressed ? self.pressedColor : self.idleColor);
++    self.layer.borderColor =
++        (self.inputLatched
++             ? [UIColor colorWithRed:0.62 green:0.82 blue:1.0 alpha:1.0]
++             : [UIColor colorWithWhite:1.0 alpha:0.58]).CGColor;
+     [self setTitleColor:[UIColor colorWithWhite:1.0 alpha:0.92]
+                forState:UIControlStateNormal];
+ }
+ 
++- (void)setHoldToLatch:(BOOL)holdToLatch {
++    if (_holdToLatch == holdToLatch) {
++        return;
++    }
++    if (!holdToLatch) {
++        [self cancelInput];
++    }
++    _holdToLatch = holdToLatch;
++}
++
+ - (void)layoutSubviews {
+     [super layoutSubviews];
+     self.layer.cornerRadius =
+@@ -117,17 +144,59 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+                            : MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds)) * 0.5;
+ }
+ 
+-- (void)inputDown {
+-    if (self.inputPressed) {
++- (void)beginInput {
++    if (self.layoutEditing || self.inputPressed) {
+         return;
+     }
+     self.inputPressed = YES;
+     [self updateAppearance];
+     HarkinianPad_PushKey(self.scancode, YES);
++    if (self.holdToLatch) {
++        NSUInteger generation = ++self.latchGeneration;
++        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
++                       dispatch_get_main_queue(), ^{
++                           if (self.latchGeneration == generation) {
++                               [self latchInput];
++                           }
++                       });
++    }
++}
++
++- (void)inputDown {
++    if (self.layoutEditing) {
++        return;
++    }
++    if (self.inputLatched) {
++        self.inputLatched = NO;
++        self.inputPressed = NO;
++        self.accessibilityValue = nil;
++        [self updateAppearance];
++        HarkinianPad_PushKey(self.scancode, NO);
++        return;
++    }
++    [self beginInput];
++}
++
++- (void)inputDragEnter {
++    if (!self.inputLatched) {
++        [self beginInput];
++    }
++}
++
++- (void)latchInput {
++    if (!self.holdToLatch || self.layoutEditing || !self.inputPressed) {
++        return;
++    }
++    self.inputLatched = YES;
++    self.accessibilityValue = @"Locked";
++    UIImpactFeedbackGenerator* feedback =
++        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
++    [feedback impactOccurred];
+ }
+ 
+ - (void)inputUp {
+-    if (!self.inputPressed) {
++    self.latchGeneration++;
++    if (self.layoutEditing || self.inputLatched || !self.inputPressed) {
+         return;
+     }
+     self.inputPressed = NO;
+@@ -136,14 +205,26 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ }
+ 
+ - (void)cancelInput {
+-    [self inputUp];
++    self.latchGeneration++;
++    self.inputLatched = NO;
++    self.accessibilityValue = nil;
++    if (!self.inputPressed) {
++        [self updateAppearance];
++        return;
++    }
++    self.inputPressed = NO;
++    [self updateAppearance];
++    HarkinianPad_PushKey(self.scancode, NO);
+ }
+ 
+ @end
+ 
++static HarkinianPadTouchButton* sMenuButton;
++
+ @interface HarkinianPadTouchStick : UIView
+ 
+ @property(nonatomic, strong) UIView* knob;
++@property(nonatomic) BOOL layoutEditing;
+ @property(nonatomic) BOOL upPressed;
+ @property(nonatomic) BOOL downPressed;
+ @property(nonatomic) BOOL leftPressed;
+@@ -235,6 +316,9 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ }
+ 
+ - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
++    if (self.layoutEditing) {
++        return;
++    }
+     UITouch* touch = touches.anyObject;
+     if (touch != nil) {
+         [self updateForPoint:[touch locationInView:self]];
+@@ -242,6 +326,9 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ }
+ 
+ - (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
++    if (self.layoutEditing) {
++        return;
++    }
+     UITouch* touch = touches.anyObject;
+     if (touch != nil) {
+         [self updateForPoint:[touch locationInView:self]];
+@@ -284,8 +371,29 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ @property(nonatomic, strong) HarkinianPadTouchButton* cDown;
+ @property(nonatomic, strong) HarkinianPadTouchButton* cLeft;
+ @property(nonatomic, strong) HarkinianPadTouchButton* cRight;
++@property(nonatomic) BOOL customizableControls;
++@property(nonatomic) BOOL layoutEditing;
++@property(nonatomic, strong) NSArray<UIView*>* editableControls;
++@property(nonatomic, strong) NSMutableArray<UIGestureRecognizer*>* editGestures;
++@property(nonatomic, strong) NSMutableDictionary<NSString*, NSArray<NSNumber*>*>* layoutCenters;
++@property(nonatomic, strong) NSMutableDictionary<NSString*, NSNumber*>* layoutScales;
++@property(nonatomic, strong) NSMutableSet<NSString*>* hiddenControls;
++@property(nonatomic, strong) NSMutableDictionary<NSString*, NSValue*>* defaultSizes;
++@property(nonatomic, copy) NSString* layoutProfile;
++@property(nonatomic, strong) UIView* selectedControl;
++@property(nonatomic, strong) UIView* editorPanel;
++@property(nonatomic, strong) UILabel* editorLabel;
++@property(nonatomic, strong) UISlider* sizeSlider;
++@property(nonatomic, strong) UIButton* visibilityButton;
++@property(nonatomic, strong) UIButton* resetButton;
++@property(nonatomic, strong) UIButton* doneButton;
+ 
+ - (void)cancelAllInputs;
++- (void)setCustomizableControlsEnabled:(BOOL)enabled;
++- (void)beginLayoutEditing;
++- (void)endLayoutEditing;
++- (void)installLayoutEditor;
++- (void)finishControlLayoutForCompact:(BOOL)compact;
+ - (void)publishNativeHudButtonCenters;
+ - (void)applyNativeHudVisualState;
+ 
+@@ -353,16 +461,45 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         self.cLeft.accessibilityLabel = @"C Left";
+         self.cRight.accessibilityLabel = @"C Right";
+ 
++        self.controlStick.accessibilityIdentifier = @"stick";
++        self.buttonA.accessibilityIdentifier = @"a";
++        self.buttonB.accessibilityIdentifier = @"b";
++        self.buttonL.accessibilityIdentifier = @"l";
++        self.buttonZRight.accessibilityIdentifier = @"z";
++        self.buttonR.accessibilityIdentifier = @"r";
++        self.buttonStart.accessibilityIdentifier = @"start";
++        self.dUp.accessibilityIdentifier = @"d-up";
++        self.dDown.accessibilityIdentifier = @"d-down";
++        self.dLeft.accessibilityIdentifier = @"d-left";
++        self.dRight.accessibilityIdentifier = @"d-right";
++        self.cUp.accessibilityIdentifier = @"c-up";
++        self.cDown.accessibilityIdentifier = @"c-down";
++        self.cLeft.accessibilityIdentifier = @"c-left";
++        self.cRight.accessibilityIdentifier = @"c-right";
++
+         self.buttons = @[
+             self.buttonA, self.buttonB, self.buttonL, self.buttonZRight,
+             self.buttonR, self.buttonStart,
+             self.dUp, self.dDown, self.dLeft, self.dRight, self.cUp, self.cDown,
+             self.cLeft, self.cRight,
+         ];
++        self.editableControls = @[
++            self.controlStick, self.buttonA, self.buttonB, self.buttonL,
++            self.buttonZRight, self.buttonR, self.buttonStart,
++            self.dUp, self.dDown, self.dLeft, self.dRight,
++            self.cUp, self.cDown, self.cLeft, self.cRight,
++        ];
++        self.layoutCenters = [NSMutableDictionary dictionary];
++        self.layoutScales = [NSMutableDictionary dictionary];
++        self.hiddenControls = [NSMutableSet set];
++        self.defaultSizes = [NSMutableDictionary dictionary];
++        self.editGestures = [NSMutableArray array];
++
+         [self addSubview:self.controlStick];
+         for (HarkinianPadTouchButton* button in self.buttons) {
+             [self addSubview:button];
+         }
++        [self installLayoutEditor];
+     }
+     return self;
+ }
+@@ -447,6 +584,19 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+             button.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+         }
+         self.buttonStart.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
++
++        // Promoted from the accepted physical iPhone layout.
++        self.cLeft.center = CGPointMake(width * 0.823855, height * 0.485470);
++        self.dDown.center = CGPointMake(width * 0.130727, height * 0.501709);
++        self.cDown.center = CGPointMake(width * 0.866509, height * 0.570085);
++        self.cUp.center = CGPointMake(width * 0.866904, height * 0.398291);
++        self.controlStick.center = CGPointMake(width * 0.214455, height * 0.722222);
++        self.buttonZRight.center = CGPointMake(width * 0.242496, height * 0.499145);
++        self.buttonA.center = CGPointMake(width * 0.876382, height * 0.737607);
++        self.cRight.center = CGPointMake(width * 0.911137, height * 0.486325);
++        self.buttonB.center = CGPointMake(width * 0.805687, height * 0.664957);
++
++        [self finishControlLayoutForCompact:YES];
+         [self publishNativeHudButtonCenters];
+         [self applyNativeHudVisualState];
+         return;
+@@ -549,10 +699,387 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+     }
+     self.buttonStart.titleLabel.font =
+         [UIFont systemFontOfSize:18.0 * scale weight:UIFontWeightBold];
++
++    // Promoted from the accepted physical iPad layout.
++    self.cLeft.center = CGPointMake(width * 0.856515, height * 0.853922);
++    self.cDown.center = CGPointMake(width * 0.902240, height * 0.905152);
++    self.cUp.center = CGPointMake(width * 0.903338, height * 0.805484);
++    self.controlStick.center = CGPointMake(width * 0.164363, height * 0.745313);
++    self.buttonZRight.center = CGPointMake(width * 0.193089, height * 0.612859);
++    self.buttonA.center = CGPointMake(width * 0.893309, height * 0.693020);
++    self.cRight.center = CGPointMake(width * 0.948331, height * 0.852945);
++    self.buttonB.center = CGPointMake(width * 0.826029, height * 0.635117);
++
++    [self finishControlLayoutForCompact:NO];
+     [self publishNativeHudButtonCenters];
+     [self applyNativeHudVisualState];
+ }
+ 
++- (void)setCustomizableControlsEnabled:(BOOL)enabled {
++    if (self.customizableControls == enabled) {
++        return;
++    }
++    [self cancelAllInputs];
++    self.customizableControls = enabled;
++    self.buttonZRight.holdToLatch = enabled;
++    if (!enabled && self.layoutEditing) {
++        [self endLayoutEditing];
++    }
++    [self setNeedsLayout];
++}
++
++- (UIButton*)editorButtonWithTitle:(NSString*)title action:(SEL)action {
++    UIButton* button = [UIButton buttonWithType:UIButtonTypeSystem];
++    [button setTitle:title forState:UIControlStateNormal];
++    [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
++    button.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
++    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
++    button.layer.cornerRadius = 10.0;
++    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
++    return button;
++}
++
++- (void)installLayoutEditor {
++    self.editorPanel = [[UIView alloc] initWithFrame:CGRectZero];
++    self.editorPanel.backgroundColor = [UIColor colorWithWhite:0.04 alpha:0.88];
++    self.editorPanel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
++    self.editorPanel.layer.borderWidth = 1.0;
++    self.editorPanel.layer.cornerRadius = 16.0;
++    self.editorPanel.hidden = YES;
++
++    self.editorLabel = [[UILabel alloc] initWithFrame:CGRectZero];
++    self.editorLabel.textColor = UIColor.whiteColor;
++    self.editorLabel.numberOfLines = 2;
++    self.editorLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
++    [self.editorPanel addSubview:self.editorLabel];
++
++    self.sizeSlider = [[UISlider alloc] initWithFrame:CGRectZero];
++    self.sizeSlider.minimumValue = 0.70f;
++    self.sizeSlider.maximumValue = 1.50f;
++    self.sizeSlider.value = 1.0f;
++    self.sizeSlider.minimumTrackTintColor =
++        [UIColor colorWithRed:0.28 green:0.68 blue:1.0 alpha:1.0];
++    [self.sizeSlider addTarget:self
++                        action:@selector(editorSizeChanged:)
++              forControlEvents:UIControlEventValueChanged];
++    [self.editorPanel addSubview:self.sizeSlider];
++
++    self.visibilityButton =
++        [self editorButtonWithTitle:@"Hide" action:@selector(toggleSelectedVisibility)];
++    self.resetButton =
++        [self editorButtonWithTitle:@"Reset" action:@selector(resetCurrentLayout)];
++    self.doneButton =
++        [self editorButtonWithTitle:@"Done" action:@selector(endLayoutEditing)];
++    self.doneButton.backgroundColor =
++        [UIColor colorWithRed:0.10 green:0.48 blue:0.92 alpha:0.88];
++    self.resetButton.accessibilityIdentifier = @"touch-layout-reset";
++    self.doneButton.accessibilityIdentifier = @"touch-layout-done";
++    [self.editorPanel addSubview:self.visibilityButton];
++    [self.editorPanel addSubview:self.resetButton];
++    [self.editorPanel addSubview:self.doneButton];
++    [self addSubview:self.editorPanel];
++
++    for (UIView* control in self.editableControls) {
++        UIPanGestureRecognizer* pan =
++            [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(moveControl:)];
++        UITapGestureRecognizer* tap =
++            [[UITapGestureRecognizer alloc] initWithTarget:self
++                                                    action:@selector(selectControlGesture:)];
++        pan.enabled = NO;
++        tap.enabled = NO;
++        [control addGestureRecognizer:pan];
++        [control addGestureRecognizer:tap];
++        [self.editGestures addObject:pan];
++        [self.editGestures addObject:tap];
++    }
++}
++
++- (void)layoutEditorPanel {
++    if (self.editorPanel.hidden) {
++        return;
++    }
++    UIEdgeInsets safe = self.safeAreaInsets;
++    CGFloat width = CGRectGetWidth(self.bounds);
++    BOOL compact = CGRectGetHeight(self.bounds) < 560.0;
++    CGFloat panelWidth =
++        MIN(width - safe.left - safe.right - (compact ? 8.0 : 16.0),
++            compact ? 560.0 : 720.0);
++    CGFloat panelHeight = compact ? 50.0 : 86.0;
++    self.editorPanel.frame =
++        CGRectMake(CGRectGetMidX(self.bounds) - panelWidth * 0.5,
++                   safe.top + (compact ? 4.0 : 8.0), panelWidth, panelHeight);
++    self.editorPanel.layer.cornerRadius = compact ? 12.0 : 16.0;
++
++    CGFloat inset = compact ? 5.0 : 12.0;
++    CGFloat buttonWidth = compact ? 54.0 : 70.0;
++    CGFloat gap = compact ? 4.0 : 8.0;
++    CGFloat contentHeight = panelHeight - inset * 2.0;
++    CGFloat trailingButtonsWidth = buttonWidth * 3.0 + gap * 2.0;
++    CGFloat labelWidth = compact ? 94.0 : MIN(150.0, panelWidth * 0.23);
++    CGFloat sliderX = inset + labelWidth + gap;
++    CGFloat sliderWidth =
++        panelWidth - inset * 2.0 - labelWidth - gap - trailingButtonsWidth - gap;
++    self.editorLabel.numberOfLines = compact ? 1 : 2;
++    self.editorLabel.font =
++        [UIFont systemFontOfSize:(compact ? 11.0 : 14.0) weight:UIFontWeightSemibold];
++    self.editorLabel.frame = CGRectMake(inset, inset, labelWidth, contentHeight);
++    self.sizeSlider.frame =
++        CGRectMake(sliderX, inset, MAX(80.0, sliderWidth), contentHeight);
++
++    CGFloat buttonX = panelWidth - inset - trailingButtonsWidth;
++    for (UIButton* button in
++         @[ self.visibilityButton, self.resetButton, self.doneButton ]) {
++        button.titleLabel.font =
++            [UIFont systemFontOfSize:(compact ? 12.0 : 14.0) weight:UIFontWeightSemibold];
++        button.layer.cornerRadius = compact ? 8.0 : 10.0;
++        button.frame = CGRectMake(buttonX, inset, buttonWidth, contentHeight);
++        buttonX += buttonWidth + gap;
++    }
++}
++
++- (NSString*)profileForCompact:(BOOL)compact {
++    return compact ? @"phone-v1" : @"tablet-v1";
++}
++
++- (NSString*)storageKeyForProfile:(NSString*)profile {
++    return [@"HarkinianPad.TouchLayout." stringByAppendingString:profile];
++}
++
++- (void)loadLayoutForProfile:(NSString*)profile {
++    if ([self.layoutProfile isEqualToString:profile]) {
++        return;
++    }
++    self.layoutProfile = profile;
++    [self.layoutCenters removeAllObjects];
++    [self.layoutScales removeAllObjects];
++    [self.hiddenControls removeAllObjects];
++
++    NSDictionary* stored =
++        [NSUserDefaults.standardUserDefaults
++            dictionaryForKey:[self storageKeyForProfile:profile]];
++    NSDictionary* centers = stored[@"centers"];
++    NSDictionary* scales = stored[@"scales"];
++    NSArray* hidden = stored[@"hidden"];
++    if ([centers isKindOfClass:NSDictionary.class]) {
++        [self.layoutCenters addEntriesFromDictionary:centers];
++    }
++    if ([scales isKindOfClass:NSDictionary.class]) {
++        [self.layoutScales addEntriesFromDictionary:scales];
++    }
++    if ([hidden isKindOfClass:NSArray.class]) {
++        [self.hiddenControls addObjectsFromArray:hidden];
++    }
++}
++
++- (void)saveCurrentLayout {
++    if (self.layoutProfile.length == 0) {
++        return;
++    }
++    NSDictionary* stored = @{
++        @"centers": [self.layoutCenters copy],
++        @"scales": [self.layoutScales copy],
++        @"hidden": self.hiddenControls.allObjects,
++    };
++    [NSUserDefaults.standardUserDefaults
++        setObject:stored
++           forKey:[self storageKeyForProfile:self.layoutProfile]];
++}
++
++- (void)clampControlToSafeBounds:(UIView*)control {
++    UIEdgeInsets safe = self.safeAreaInsets;
++    CGFloat halfWidth = CGRectGetWidth(control.bounds) * 0.5;
++    CGFloat halfHeight = CGRectGetHeight(control.bounds) * 0.5;
++    CGFloat minX = safe.left + halfWidth + 4.0;
++    CGFloat maxX = CGRectGetWidth(self.bounds) - safe.right - halfWidth - 4.0;
++    CGFloat minY = safe.top + halfHeight + 4.0;
++    CGFloat maxY = CGRectGetHeight(self.bounds) - safe.bottom - halfHeight - 4.0;
++    control.center = CGPointMake(
++        std::clamp(control.center.x, minX, MAX(minX, maxX)),
++        std::clamp(control.center.y, minY, MAX(minY, maxY)));
++}
++
++- (void)finishControlLayoutForCompact:(BOOL)compact {
++    if (!self.customizableControls) {
++        for (UIView* control in self.editableControls) {
++            control.hidden = NO;
++            control.alpha = 1.0;
++            control.layer.shadowOpacity = 0.0;
++        }
++        [self layoutEditorPanel];
++        return;
++    }
++
++    [self loadLayoutForProfile:[self profileForCompact:compact]];
++    [self.defaultSizes removeAllObjects];
++    CGFloat width = CGRectGetWidth(self.bounds);
++    CGFloat height = CGRectGetHeight(self.bounds);
++    for (UIView* control in self.editableControls) {
++        NSString* key = control.accessibilityIdentifier;
++        if (key.length == 0) {
++            continue;
++        }
++        CGSize defaultSize = control.bounds.size;
++        self.defaultSizes[key] = [NSValue valueWithCGSize:defaultSize];
++        CGFloat scale = self.layoutScales[key] == nil
++            ? 1.0
++            : std::clamp(self.layoutScales[key].doubleValue, 0.70, 1.50);
++        control.bounds =
++            CGRectMake(0.0, 0.0, defaultSize.width * scale, defaultSize.height * scale);
++        NSArray<NSNumber*>* center = self.layoutCenters[key];
++        if ([center isKindOfClass:NSArray.class] && center.count == 2) {
++            control.center =
++                CGPointMake(center[0].doubleValue * width, center[1].doubleValue * height);
++        }
++        [self clampControlToSafeBounds:control];
++        BOOL hidden = [self.hiddenControls containsObject:key];
++        control.hidden = self.layoutEditing ? NO : hidden;
++        control.alpha = self.layoutEditing && hidden ? 0.28 : 1.0;
++        BOOL selected = self.layoutEditing && control == self.selectedControl;
++        control.layer.shadowColor =
++            [UIColor colorWithRed:1.0 green:0.78 blue:0.16 alpha:1.0].CGColor;
++        control.layer.shadowRadius = selected ? 8.0 : 0.0;
++        control.layer.shadowOpacity = selected ? 1.0 : 0.0;
++        control.layer.shadowOffset = CGSizeZero;
++    }
++    [self layoutEditorPanel];
++    [self bringSubviewToFront:self.editorPanel];
++}
++
++- (void)selectControl:(UIView*)control {
++    if (!self.layoutEditing || control == nil) {
++        return;
++    }
++    self.selectedControl = control;
++    NSString* label = control.accessibilityLabel;
++    if (label.length == 0) {
++        label = control.accessibilityIdentifier;
++    }
++    BOOL compact = CGRectGetHeight(self.bounds) < 560.0;
++    self.editorLabel.text =
++        compact ? [NSString stringWithFormat:@"%@ • Drag • Size", label]
++                : [NSString stringWithFormat:@"%@\nDrag to move • Size", label];
++    NSString* key = control.accessibilityIdentifier;
++    self.sizeSlider.value =
++        self.layoutScales[key] == nil ? 1.0f : self.layoutScales[key].floatValue;
++    BOOL hidden = [self.hiddenControls containsObject:key];
++    [self.visibilityButton setTitle:(hidden ? @"Show" : @"Hide")
++                           forState:UIControlStateNormal];
++    self.visibilityButton.enabled = ![key isEqualToString:@"stick"];
++    self.visibilityButton.alpha = self.visibilityButton.enabled ? 1.0 : 0.4;
++    [self setNeedsLayout];
++}
++
++- (void)selectControlGesture:(UITapGestureRecognizer*)gesture {
++    [self selectControl:gesture.view];
++}
++
++- (void)moveControl:(UIPanGestureRecognizer*)gesture {
++    UIView* control = gesture.view;
++    if (!self.layoutEditing || control == nil) {
++        return;
++    }
++    if (gesture.state == UIGestureRecognizerStateBegan) {
++        [self selectControl:control];
++    }
++    CGPoint translation = [gesture translationInView:self];
++    control.center =
++        CGPointMake(control.center.x + translation.x, control.center.y + translation.y);
++    [gesture setTranslation:CGPointZero inView:self];
++    [self clampControlToSafeBounds:control];
++    self.layoutCenters[control.accessibilityIdentifier] = @[
++        @(control.center.x / CGRectGetWidth(self.bounds)),
++        @(control.center.y / CGRectGetHeight(self.bounds)),
++    ];
++}
++
++- (void)editorSizeChanged:(UISlider*)slider {
++    UIView* control = self.selectedControl;
++    NSString* key = control.accessibilityIdentifier;
++    NSValue* sizeValue = self.defaultSizes[key];
++    if (control == nil || key.length == 0 || sizeValue == nil) {
++        return;
++    }
++    CGFloat scale = slider.value;
++    self.layoutScales[key] = @(scale);
++    CGSize baseSize = sizeValue.CGSizeValue;
++    control.bounds =
++        CGRectMake(0.0, 0.0, baseSize.width * scale, baseSize.height * scale);
++    [self clampControlToSafeBounds:control];
++    self.layoutCenters[key] = @[
++        @(control.center.x / CGRectGetWidth(self.bounds)),
++        @(control.center.y / CGRectGetHeight(self.bounds)),
++    ];
++}
++
++- (void)toggleSelectedVisibility {
++    NSString* key = self.selectedControl.accessibilityIdentifier;
++    if (key.length == 0 || [key isEqualToString:@"stick"]) {
++        return;
++    }
++    if ([self.hiddenControls containsObject:key]) {
++        [self.hiddenControls removeObject:key];
++    } else {
++        [self.hiddenControls addObject:key];
++    }
++    [self selectControl:self.selectedControl];
++}
++
++- (void)resetCurrentLayout {
++    if (self.layoutProfile.length == 0) {
++        return;
++    }
++    [self.layoutCenters removeAllObjects];
++    [self.layoutScales removeAllObjects];
++    [self.hiddenControls removeAllObjects];
++    [NSUserDefaults.standardUserDefaults
++        removeObjectForKey:[self storageKeyForProfile:self.layoutProfile]];
++    [self setNeedsLayout];
++    [self selectControl:self.buttonA];
++}
++
++- (void)beginLayoutEditing {
++    if (!self.customizableControls || self.layoutEditing) {
++        return;
++    }
++    [self cancelAllInputs];
++    self.layoutEditing = YES;
++    for (HarkinianPadTouchButton* button in self.buttons) {
++        button.layoutEditing = YES;
++    }
++    self.controlStick.layoutEditing = YES;
++    for (UIGestureRecognizer* gesture in self.editGestures) {
++        gesture.enabled = YES;
++    }
++    self.editorPanel.hidden = NO;
++    sLayoutEditorActive.store(true);
++    sMenuButton.hidden = YES;
++    [self applyNativeHudVisualState];
++    [self selectControl:self.buttonA];
++    [self setNeedsLayout];
++    SDL_Log("[HarkinianPad] touch layout editor opened");
++}
++
++- (void)endLayoutEditing {
++    if (!self.layoutEditing) {
++        return;
++    }
++    [self saveCurrentLayout];
++    self.layoutEditing = NO;
++    for (HarkinianPadTouchButton* button in self.buttons) {
++        button.layoutEditing = NO;
++    }
++    self.controlStick.layoutEditing = NO;
++    for (UIGestureRecognizer* gesture in self.editGestures) {
++        gesture.enabled = NO;
++    }
++    self.editorPanel.hidden = YES;
++    self.selectedControl = nil;
++    sLayoutEditorActive.store(false);
++    sMenuButton.hidden = NO;
++    [self setNeedsLayout];
++    SDL_Log("[HarkinianPad] touch layout saved");
++}
++
+ - (void)publishNativeHudButtonCenters {
+     const CGFloat width = CGRectGetWidth(self.bounds);
+     const CGFloat height = CGRectGetHeight(self.bounds);
+@@ -564,6 +1091,12 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+         self.buttonA, self.buttonB, self.cUp, self.cDown, self.cLeft, self.cRight,
+     ];
+     for (NSUInteger index = 0; index < nativeButtons.count; index++) {
++        if (nativeButtons[index].hidden && !self.layoutEditing) {
++            sNativeHudButtonCenters[index][0].store(0.0f);
++            sNativeHudButtonCenters[index][1].store(0.0f);
++            sNativeHudButtonWidths[index].store(0.0f);
++            continue;
++        }
+         const CGPoint center = nativeButtons[index].center;
+         sNativeHudButtonCenters[index][0].store(center.x / width);
+         sNativeHudButtonCenters[index][1].store(center.y / height);
+@@ -574,7 +1107,8 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ - (void)applyNativeHudVisualState {
+     const BOOL hideUIKitFaceButtons =
+         sTouchControlsDesired.load() && sNativeHudTouchDesired.load() &&
+-        sNativeHudTouchGameplayActive.load() && !sTouchControlsMenuVisible.load();
++        sNativeHudTouchGameplayActive.load() && !sTouchControlsMenuVisible.load() &&
++        !sLayoutEditorActive.load();
+     for (HarkinianPadTouchButton* button in
+          @[ self.buttonA, self.buttonB, self.cUp, self.cDown, self.cLeft, self.cRight ]) {
+         // Hide only UIKit's artwork. The button itself stays fully opaque and
+@@ -593,7 +1127,7 @@ static void HarkinianPad_PushKey(SDL_Scancode scancode, BOOL pressed) {
+ @end
+ 
+ static HarkinianPadTouchOverlay* sTouchOverlay;
+-static HarkinianPadTouchButton* sMenuButton;
++static BOOL sLifecycleObserversInstalled;
+ 
+ static UIWindow* HarkinianPad_ActiveWindow(void) {
+     for (UIScene* scene in UIApplication.sharedApplication.connectedScenes) {
+@@ -651,6 +1185,25 @@ static void HarkinianPad_InstallMenuButton(UIWindow* window) {
+     [window bringSubviewToFront:sMenuButton];
+ }
+ 
++static void HarkinianPad_InstallLifecycleObservers(void) {
++    if (sLifecycleObserversInstalled) {
++        return;
++    }
++    sLifecycleObserversInstalled = YES;
++    NSNotificationCenter* notifications = NSNotificationCenter.defaultCenter;
++    for (NSNotificationName name in
++         @[ UIApplicationWillResignActiveNotification,
++            UIApplicationDidEnterBackgroundNotification ]) {
++        [notifications addObserverForName:name
++                                   object:nil
++                                    queue:NSOperationQueue.mainQueue
++                               usingBlock:^(NSNotification* notification) {
++                                   (void)notification;
++                                   [sTouchOverlay cancelAllInputs];
++                               }];
++    }
++}
++
+ static void HarkinianPad_ApplyTouchControlsState(void) {
+     UIWindow* window = HarkinianPad_ActiveWindow();
+     if (window == nil) {
+@@ -663,9 +1216,15 @@ static void HarkinianPad_ApplyTouchControlsState(void) {
+ 
+     HarkinianPad_InstallMenuButton(window);
+     if (!sTouchControlsDesired.load() || sTouchControlsMenuVisible.load()) {
++        if (sTouchOverlay.layoutEditing) {
++            [sTouchOverlay endLayoutEditing];
++        }
+         [sTouchOverlay cancelAllInputs];
+         [sTouchOverlay removeFromSuperview];
+         sTouchOverlay = nil;
++        if (!sTouchControlsDesired.load()) {
++            sLayoutEditorRequested = NO;
++        }
+         return;
+     }
+ 
+@@ -673,14 +1232,22 @@ static void HarkinianPad_ApplyTouchControlsState(void) {
+         sTouchOverlay = [[HarkinianPadTouchOverlay alloc] initWithFrame:window.bounds];
+         sTouchOverlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+     }
++    [sTouchOverlay
++        setCustomizableControlsEnabled:sCustomizableTouchControlsDesired.load()];
+     if (sTouchOverlay.superview != window) {
+         [sTouchOverlay removeFromSuperview];
+         sTouchOverlay.frame = window.bounds;
+         [window addSubview:sTouchOverlay];
+     }
++    if (sLayoutEditorRequested && sCustomizableTouchControlsDesired.load()) {
++        sLayoutEditorRequested = NO;
++        [sTouchOverlay beginLayoutEditing];
++    }
+     [sTouchOverlay applyNativeHudVisualState];
+     [window bringSubviewToFront:sTouchOverlay];
+-    [window bringSubviewToFront:sMenuButton];
++    if (!sLayoutEditorActive.load()) {
++        [window bringSubviewToFront:sMenuButton];
++    }
+ }
+ 
+ int HarkinianPad_TouchControlsAvailable(void) {
+@@ -689,11 +1256,41 @@ int HarkinianPad_TouchControlsAvailable(void) {
+ 
+ void HarkinianPad_SetTouchControlsEnabled(int enabled) {
+     dispatch_async(dispatch_get_main_queue(), ^{
++        HarkinianPad_InstallLifecycleObservers();
+         sTouchControlsDesired.store(enabled != 0);
+         HarkinianPad_ApplyTouchControlsState();
+     });
+ }
+ 
++void HarkinianPad_SetCustomizableTouchControlsEnabled(int enabled) {
++    dispatch_async(dispatch_get_main_queue(), ^{
++        const BOOL customizable = enabled != 0;
++        sCustomizableTouchControlsDesired.store(customizable);
++        if (!customizable) {
++            sLayoutEditorRequested = NO;
++        }
++        [sTouchOverlay setCustomizableControlsEnabled:customizable];
++        HarkinianPad_ApplyTouchControlsState();
++    });
++}
++
++void HarkinianPad_BeginTouchLayoutEditing(void) {
++    dispatch_async(dispatch_get_main_queue(), ^{
++        if (!sTouchControlsDesired.load() ||
++            !sCustomizableTouchControlsDesired.load()) {
++            SDL_Log("[HarkinianPad] customizable touch controls are disabled");
++            return;
++        }
++        sLayoutEditorRequested = YES;
++        if (sTouchControlsMenuVisible.load()) {
++            HarkinianPad_PushKey(SDL_SCANCODE_ESCAPE, YES);
++            HarkinianPad_PushKey(SDL_SCANCODE_ESCAPE, NO);
++        } else {
++            HarkinianPad_ApplyTouchControlsState();
++        }
++    });
++}
++
+ void HarkinianPad_SetTouchControlsMenuVisible(int visible) {
+     const bool menuVisible = visible != 0;
+     if (sTouchControlsMenuVisible.exchange(menuVisible) == menuVisible) {
+@@ -736,7 +1333,8 @@ void HarkinianPad_SetNativeHudTouchGameplayActive(int active) {
+ int HarkinianPad_GetNativeHudButtonCenter(int button, float aspectRatio, float* x, float* y) {
+     if (button < 0 || button >= HARKINIANPAD_HUD_BUTTON_COUNT || x == nullptr || y == nullptr ||
+         aspectRatio <= 0.0f || !sTouchControlsDesired.load() || !sNativeHudTouchDesired.load() ||
+-        !sNativeHudTouchGameplayActive.load() || sTouchControlsMenuVisible.load()) {
++        !sNativeHudTouchGameplayActive.load() || sTouchControlsMenuVisible.load() ||
++        sLayoutEditorActive.load()) {
+         return 0;
+     }
+ 
+@@ -756,7 +1354,8 @@ int HarkinianPad_GetNativeHudButtonCenter(int button, float aspectRatio, float*
+ float HarkinianPad_GetNativeHudButtonScale(int button, float aspectRatio) {
+     if (button < 0 || button >= HARKINIANPAD_HUD_BUTTON_COUNT || aspectRatio <= 0.0f ||
+         !sTouchControlsDesired.load() || !sNativeHudTouchDesired.load() ||
+-        !sNativeHudTouchGameplayActive.load() || sTouchControlsMenuVisible.load()) {
++        !sNativeHudTouchGameplayActive.load() || sTouchControlsMenuVisible.load() ||
++        sLayoutEditorActive.load()) {
+         return 1.0f;
+     }
+ 
+diff --git a/soh/soh/Enhancements/bootcommands.c b/soh/soh/Enhancements/bootcommands.c
+index 276cfa65d..a7fa63b78 100644
+--- a/soh/soh/Enhancements/bootcommands.c
++++ b/soh/soh/Enhancements/bootcommands.c
+@@ -21,8 +21,12 @@ void BootCommands_Init() {
+     CVarRegisterInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1);
+     HarkinianPad_SetTouchControlsEnabled(
+         CVarGetInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1));
+-    CVarRegisterInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), 0);
+-    HarkinianPad_SetNativeHudTouchEnabled(
+-        CVarGetInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), 0));
++    CVarRegisterInteger(CVAR_SETTING("HarkinianPad.LegacyFixedTouchControls"), 0);
++    const int modernTouchControls =
++        !CVarGetInteger(CVAR_SETTING("HarkinianPad.LegacyFixedTouchControls"), 0);
++    CVarSetInteger(CVAR_SETTING("HarkinianPad.CustomizableTouchControls"), modernTouchControls);
++    CVarSetInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), modernTouchControls);
++    HarkinianPad_SetCustomizableTouchControlsEnabled(modernTouchControls);
++    HarkinianPad_SetNativeHudTouchEnabled(modernTouchControls);
+ #endif
+ }
+diff --git a/soh/soh/SohGui/SohMenuSettings.cpp b/soh/soh/SohGui/SohMenuSettings.cpp
+index 8a2039048..c4f3812e9 100644
+--- a/soh/soh/SohGui/SohMenuSettings.cpp
++++ b/soh/soh/SohGui/SohMenuSettings.cpp
+@@ -453,21 +453,42 @@ void SohMenu::AddMenuSettings() {
+         })
+         .Options(CheckboxOptions()
+                      .DefaultValue(true)
+-                     .Tooltip("Shows the low-grip touch controller. Disable it when using a physical controller."));
+-    AddWidget(path, "Native HUD Touch Controls (Experimental)", WIDGET_CVAR_CHECKBOX)
+-        .CVar(CVAR_SETTING("HarkinianPad.NativeHudTouch"))
++                     .Tooltip("Shows the touch controller. Disable it when using a physical controller."));
++    AddWidget(path, "Legacy Fixed Touch Controls", WIDGET_CVAR_CHECKBOX)
++        .CVar(CVAR_SETTING("HarkinianPad.LegacyFixedTouchControls"))
+         .RaceDisable(false)
+         .PreFunc([](WidgetInfo& info) {
+             info.isHidden = !HarkinianPad_TouchControlsAvailable();
+         })
+         .Callback([](WidgetInfo& info) {
+-            HarkinianPad_SetNativeHudTouchEnabled(
+-                CVarGetInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), 0));
++            const bool modernTouchControls =
++                !CVarGetInteger(CVAR_SETTING("HarkinianPad.LegacyFixedTouchControls"), 0);
++            CVarSetInteger(CVAR_SETTING("HarkinianPad.CustomizableTouchControls"), modernTouchControls);
++            CVarSetInteger(CVAR_SETTING("HarkinianPad.NativeHudTouch"), modernTouchControls);
++            HarkinianPad_SetCustomizableTouchControlsEnabled(modernTouchControls);
++            HarkinianPad_SetNativeHudTouchEnabled(modernTouchControls);
+         })
+         .Options(CheckboxOptions()
+                      .DefaultValue(false)
+-                     .Tooltip("Experimental: uses the in-game A, B, and C HUD graphics over the existing touch "
+-                              "targets during gameplay. Touch Controls must remain enabled."));
++                     .Tooltip("Uses the previous fixed UIKit layout and disables customization, native HUD "
++                              "artwork, and the Z hold latch."));
++    AddWidget(path, "Customize Touch Layout", WIDGET_BUTTON)
++        .RaceDisable(false)
++        .PreFunc([](WidgetInfo& info) {
++            info.isHidden = !HarkinianPad_TouchControlsAvailable();
++            const bool available =
++                CVarGetInteger(CVAR_SETTING("HarkinianPad.TouchControls"), 1) &&
++                !CVarGetInteger(CVAR_SETTING("HarkinianPad.LegacyFixedTouchControls"), 0);
++            info.options->disabled = !available;
++            info.options->disabledTooltip =
++                "Enable Touch Controls and turn off Legacy Fixed Touch Controls first.";
++        })
++        .Callback([](WidgetInfo& info) {
++            HarkinianPad_BeginTouchLayoutEditing();
++        })
++        .Options(ButtonOptions().Tooltip(
++            "Closes Settings and opens the layout editor. Drag controls, resize the selected control, hide "
++            "unused buttons, or restore the phone or tablet defaults."));
+ #endif
+     AddWidget(path, "Clear Devices", WIDGET_BUTTON)
+         .Callback([](WidgetInfo& info) {

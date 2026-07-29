@@ -107,12 +107,11 @@ the reference for final gameplay feel.
 - A brighter fill while pressed.
 - No textures, custom assets, haptics, editor, or resize system.
 
-## Native HUD touch experiment
+## Native HUD touch controls
 
-Do not replace the current UIKit controls until a native-HUD prototype passes
-on both iPhone and iPad. Shipwright already supports separate positions for
-the native A, B, and four C-button graphics, but their complete visual scaling
-is not implemented consistently.
+The native-HUD prototype passed on physical iPhone and iPad and is now part of
+the default customizable controller. Shipwright supports separate positions
+for the native A, B, and four C-button graphics.
 
 The smallest reversible prototype should:
 
@@ -128,10 +127,11 @@ The smallest reversible prototype should:
 - keep C-up discoverable for normal input while preserving Navi's conditional
   prompt behavior.
 
-The first opt-in implementation is tracked in
+The implementation history is tracked in
 [`native-hud-touch-experiment.md`](native-hud-touch-experiment.md). It is
-default-off and leaves this V1 layout unchanged. iPhone and iPad experimental
-gameplay changes only the A/B/C rendering; geometry remains identical to V1.
+paired with transparent UIKit hit targets and the accepted device-specific
+customizable layouts. The prior fixed UIKit controller remains available
+through **Legacy Fixed Touch Controls**.
 
 Simulator proof is necessary for layout work, but final acceptance requires
 physical gameplay on both device classes.

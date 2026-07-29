@@ -118,16 +118,19 @@ are ignored by Git and rejected by the repository's package audit.
 
 ## Touch controls
 
-The controller is arranged for a landscape iPad held at both edges:
+HarkinianPad selects a landscape layout for the current device class:
 
-- **Left:** L and Z, a compact D-pad, and the control stick.
-- **Right:** Start and R, the A/B/Z face cluster, and the C-button diamond.
+- **Left:** a separate D-pad, the control stick, and Z within left-thumb reach.
+- **Right:** Start/R/L, the native A/B/C HUD controls, and their transparent
+  UIKit touch targets.
 - **Menu:** the small `•••` button remains available even when gameplay touch
   controls are disabled.
 - **Toggle:** use **Settings → Controls → Touch Controls** to hide or restore
   the gameplay overlay.
-- **Safety:** Reset requires confirmation instead of restarting immediately.
-
+- **Customize:** choose **Customize Touch Layout** to move, resize, or hide
+  controls in separate phone and tablet layouts.
+- **Fallback:** enable **Legacy Fixed Touch Controls** to use the previous
+  non-customizable UIKit controller.
 Opening the menu hides the gameplay controls so the settings interface remains
 usable. Closing it restores the controls only when Touch Controls is enabled.
 
@@ -298,7 +301,8 @@ redistributable open source without resolving that boundary.
 | [`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md) | Developer-preview IPA installation with AltStore Classic |
 | [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | Source and IPA publication gates |
 | [`docs/touch-controls-design.md`](docs/touch-controls-design.md) | Touch layout and input contract |
-| [`docs/native-hud-touch-experiment.md`](docs/native-hud-touch-experiment.md) | Opt-in native HUD touch experiment and living test log |
+| [`docs/native-hud-touch-experiment.md`](docs/native-hud-touch-experiment.md) | Native HUD touch implementation history and physical test log |
+| [`docs/customizable-touch-controls.md`](docs/customizable-touch-controls.md) | Default movable/resizable touch controls and legacy fallback |
 | [`docs/remaining-work.md`](docs/remaining-work.md) | Evidence ledger and remaining gates |
 | [`ref/`](ref/) | Ignored local reference area; only its safety README is tracked |
 

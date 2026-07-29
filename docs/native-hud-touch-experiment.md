@@ -1,25 +1,23 @@
-# Native HUD touch experiment
+# Native HUD touch implementation history
 
 ## Status
 
-**Experimental, opt-in, accepted for repository inclusion, and not approved
-as the default.**
+**Promoted into the default customizable touch controller on 2026-07-29.**
 
-The accepted UIKit touch controller remains the default. Enable the prototype
-under **Settings > Controls > Native HUD Touch Controls (Experimental)**.
-**Touch Controls** must also remain enabled.
+The previous fixed UIKit controller remains available through **Settings >
+Controls > Legacy Fixed Touch Controls**. **Touch Controls** must remain
+enabled for either controller.
 
-This document is the living record for the experiment. Update the checkpoint
-and feedback tables whenever a build is tested; do not infer physical-device
-acceptance from Simulator results.
+This document preserves the experiment and physical-test history that led to
+promotion. Do not infer acceptance of a new build from an older checkpoint.
 
 ## Product contract
 
-- Default off. Existing installs and clean installs continue to show V1.
-- Turning the experiment off restores V1 immediately without a restart.
-- Experimental gameplay uses the exact accepted V1 touch geometry on both
-  iPhone and iPad. Enabling the experiment changes artwork, not control
-  placement.
+- Default on as part of the customizable controller.
+- Enabling Legacy Fixed Touch Controls restores the previous UIKit controller
+  immediately without a restart.
+- Gameplay uses the accepted customized touch geometry independently on iPhone
+  and iPad.
 - The clear UIKit hit targets remain fully opaque and interactive while
   posting the existing SDL keyboard bindings. Only their artwork is hidden.
 - Only A, B, C-up, C-down, C-left, and C-right change appearance.
@@ -55,11 +53,11 @@ The implementation is isolated in
 `patches/shipwright-ios-native-hud-touch-experiment.patch`, applied after the
 stable `shipwright-ios-touch-controls.patch`.
 
-## Known experimental limits
+## Known limits
 
 - C-up is visually absent unless the game is displaying Navi's C-up prompt.
-- The experiment adds no new press ring, haptics, layout editor, or user
-  scaling.
+- The native artwork itself adds no new input path; the surrounding
+  customizable controller provides the layout editor and Z-latch haptic.
 - General Shipwright HUD scaling remains incomplete; this experiment does not
   enable or modify that unfinished editor.
 - Simulator results establish layout behavior only. Physical iPhone and iPad
@@ -134,14 +132,9 @@ Add one row per meaningful test session.
 | 2026-07-29 | Tablet lower-cluster lift | iPad Pro 12.9-inch (6th generation) | Gameplay, experimental | The first lower-cluster lift improved the layout; physical thumb testing requested one final small upward nudge for the three non-Navi C buttons and a tiny up-and-right stick adjustment. | Preserve Navi and every other control; apply only the requested micro-adjustment and reinstall in place |
 | 2026-07-29 | Tablet micro-adjustment | iPad Pro 12.9-inch (6th generation) | Gameplay, experimental | User accepted the final physical iPad layout. Together with the accepted physical iPhone layout, the experiment is ready for opt-in, default-off repository inclusion. | Keep the experiment default-off; complete the transition, multi-touch, and controller matrices before considering default promotion |
 
-## Promotion gate
+## Promotion decision
 
-Do not replace V1 or enable this experiment by default until:
-
-1. positioning is accepted on both Simulator device classes;
-2. the same build is played on a physical iPhone and iPad;
-3. title, file/name entry, gameplay, pause, Navi, item/ammo, menu, and
-   multi-touch cases pass;
-4. turning the experiment off is confirmed to restore V1 completely; and
-5. the fixed iPad render scale is accepted with item, ammo, Navi, and action
-   labels in representative gameplay states.
+The user accepted the native HUD geometry and touch behavior on both physical
+device classes and requested promotion on 2026-07-29. The legacy fixed UIKit
+controller remains available for the validation cycle. Each promoted build
+must still be installed and reviewed on both devices before publication.

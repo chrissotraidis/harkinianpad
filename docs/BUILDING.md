@@ -167,14 +167,19 @@ with **•••**; the gameplay overlay disappears while the menu is visible an
 returns when the menu closes. Turn it off or back on entirely under
 **Settings > Controls > Touch Controls**.
 
-An opt-in **Native HUD Touch Controls (Experimental)** setting is also
-available while the experiment is under development. It keeps the proven SDL
-input path and the existing automatically selected iPhone and iPad geometry.
-Native A, B, and C artwork uses the same live centers and visible sizes as the
-UIKit buttons it replaces. It defaults to off and must not be treated as the
-default layout until the remaining promotion matrix in
-[`native-hud-touch-experiment.md`](native-hud-touch-experiment.md) is complete.
-The current iPhone and iPad layouts are accepted for opt-in experimental use.
+The default controller keeps the proven SDL input path and uses native A, B,
+and C HUD artwork over transparent UIKit touch targets. Choose **Customize
+Touch Layout** to move, resize, or hide individual controls; phone and tablet
+overrides are stored separately. Holding Z for 0.5 seconds latches it with a
+haptic confirmation so the left thumb can return to the stick. Tap Z again to
+release it.
+
+The accepted physical iPhone and iPad layouts are the built-in defaults.
+Enable **Legacy Fixed Touch Controls** to restore the previous
+non-customizable UIKit controller and disable native HUD artwork and the Z
+latch. See
+[`customizable-touch-controls.md`](customizable-touch-controls.md) for the
+layout and persistence contract.
 
 The basic touch bridge reuses the existing bindings:
 
@@ -218,18 +223,25 @@ Confirm that:
    input viewer.
 2. Disabling **Touch Controls** removes the overlay immediately; enabling it
    restores the overlay without restarting.
-3. With **Native HUD Touch Controls (Experimental)** off, confirm the accepted
-   V1 layout is unchanged. With it on, confirm the native A/B/C graphics move
-   with their touch targets during gameplay—including the compact iPhone
-   arrangement—and the visible V1 buttons return on title, file-select, and
-   pause screens.
+3. Confirm the native A/B/C graphics move with their touch targets during
+   gameplay—including the compact iPhone arrangement—and the visible UIKit
+   buttons return on title, file-select, and pause screens.
 4. Opening the menu hides every gameplay control, and closing it restores the
    overlay only when **Touch Controls** is enabled.
-5. A save can be created or selected and Link can be controlled in active
+5. Open **Customize Touch Layout** and confirm the editor can select, move,
+   resize, hide/show, reset, and save controls without
+   changing the other device class's profile. Confirm the stick cannot be
+   hidden and `•••` returns after Done. In gameplay, hold Z for 0.5 seconds:
+   confirm one haptic pulse, a persistent blue Z fill, simultaneous stick
+   movement while Z remains held, and release on the next Z tap. Also confirm
+   opening the menu or backgrounding the app clears the latch. Enable
+   **Legacy Fixed Touch Controls** and confirm the previous fixed UIKit layout
+   returns and the editor is unavailable.
+6. A save can be created or selected and Link can be controlled in active
    gameplay for at least ten minutes.
-6. Disconnecting and reconnecting the controller does not crash the app and
+7. Disconnecting and reconnecting the controller does not crash the app and
    restores control without losing the current save.
-7. Rumble and motion input are recorded as supported, unsupported, or not
+8. Rumble and motion input are recorded as supported, unsupported, or not
    exposed for the exact controller model; do not infer either capability
    from the extended-gamepad declaration.
 

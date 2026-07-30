@@ -284,9 +284,17 @@ requirements.
 
 Each upstream component retains its own license and copyright. Libultraship,
 ZAPDTR, OTRExporter, SDL, and their dependencies carry their respective
-licenses. The pinned Shipwright tree and this repository currently have no
-single top-level project license, so do not describe the project as broadly
-redistributable open source without resolving that boundary.
+licenses. HarkinianPad-owned integration code, scripts, documentation,
+artwork, and original patch content are publicly readable but currently carry
+no license grant. HarkinianPad is therefore source-available, not broadly
+redistributable open source.
+
+The pinned Shipwright tree also has no top-level license. Shipwright's official
+[modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
+documents public forks, modifications, and distributable builds. The free,
+unsigned, ROM-free HarkinianPad developer preview follows that community
+modding model. Written upstream clarification remains an open task before
+paid access, commercial binary licensing, or official-store distribution.
 </details>
 
 ## Project map

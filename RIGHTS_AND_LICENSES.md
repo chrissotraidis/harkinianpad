@@ -13,6 +13,14 @@ third-party code remain with their respective authors and are governed by the
 terms supplied by those projects. Public IPA packages include the discovered
 third-party license files under `ThirdPartyLicenses/`.
 
+The pinned Shipwright tree has no top-level license. Shipwright's official
+[modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
+documents public forks, modifications, and distributable builds.
+HarkinianPad's free, unsigned developer-preview IPA follows that documented
+community-modding model. This is not a formal open-source license grant, and
+written upstream clarification remains required before paid access, commercial
+binary licensing, or official-store distribution.
+
 HarkinianPad does not grant rights to Nintendo trademarks, Ocarina of Time,
 ROMs, extracted assets, or other copyrighted game material. No game ROM or
 ROM-derived playable archive is included in this repository or its published

@@ -19,6 +19,11 @@ This is the final gate for a public source snapshot or downloadable IPA.
 - [ ] [`RIGHTS_AND_LICENSES.md`](../RIGHTS_AND_LICENSES.md) still limits the
       HarkinianPad notice to project-owned work and does not claim to
       relicense Shipwright, dependencies, Nintendo material, or game data.
+- [ ] Release copy describes HarkinianPad as source-available rather than
+      broadly redistributable open source.
+- [ ] Distribution remains a free, unsigned, ROM-free community preview
+      consistent with Shipwright's documented
+      [modding and distributable-build workflow](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md).
 - [ ] Build from a clean checkout at a tagged commit.
 - [ ] Use the stable bundle identifier
       `com.chrissotraidis.harkinianpad`.
@@ -56,6 +61,10 @@ This is the final gate for a public source snapshot or downloadable IPA.
 
 - Physical controller, reconnect, rumble, and motion testing is incomplete.
 - The complete lifecycle/interruption matrix remains open.
+- Written Shipwright clarification remains open before paid access, commercial
+  binary licensing, or official-store distribution. It does not block the
+  free unsigned developer preview under Shipwright's documented community
+  modding workflow.
 
 Controller and lifecycle gaps may be published as explicit developer-preview
 limitations. Every public IPA must carry the scoped rights notice and

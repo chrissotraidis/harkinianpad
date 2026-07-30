@@ -228,14 +228,14 @@ like that has ever been accepted into the mainline SoH repo for *any* platform (
 | `lus-wiiu` | `lus-wiiu/LICENSE` | MIT | "kenix3 kenixwhisperwind@gmail.com," 2022 |
 
 **Flag: `HarbourMasters/Shipwright` (the `soh` local tree) has no top-level `LICENSE` file at all.** This is
-worth independently confirming against the live GitHub repo (it's possible one exists on GitHub but wasn't
-pulled into this local checkout) — but as checked here, the SoH/Shipwright repo itself ships no explicit
-license grant of its own code, unlike every one of its dependencies (LUS, ZAPDTR, OTRExporter), which are
-all cleanly MIT. Practically: SoH's own source is presumably intended to be treated as source-available/
-MIT-compatible given it links MIT libraries and openly distributes source, but the **absence of a LICENSE
-file at the SoH repo root is a real gap** to resolve (ask upstream, or check the live GitHub repo directly)
-before building a redistributable iOS product on top of it — you cannot currently point to an explicit
-license grant text for the SoH-specific code layer.
+also absent from the live GitHub root as rechecked in July 2026. The SoH/Shipwright repo therefore supplies
+no explicit formal license grant for its own code, unlike its MIT-licensed LUS, ZAPDTR, and OTRExporter
+dependencies. Shipwright's official
+[modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
+nevertheless directs users to create public forks, modify the code, share changes, and generate distributable
+builds. That documented community workflow supports a free modified developer preview, but it is not a
+substitute for a formal open-source license. Keep the project described as source-available and obtain written
+upstream clarification before paid access, commercial binary licensing, or official-store distribution.
 
 **No GPL/LGPL/copyleft found anywhere in the license set reviewed.** All licenses found (own code + vendored
 deps enumerated below) are MIT, BSD-3-Clause, Apache-2.0, or zlib — all permissive, all compatible with a

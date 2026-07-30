@@ -19,7 +19,7 @@
   <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
 </p>
 
-![HarkinianPad running Ocarina of Time on a physical iPad with its touch controller](docs/readme/harkinianpad-gameplay.jpg)
+![HarkinianPad running Ocarina of Time on iPad with customizable touch controls](docs/readme/harkinianpad-gameplay.jpg)
 
 HarkinianPad packages the full
 [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) source port

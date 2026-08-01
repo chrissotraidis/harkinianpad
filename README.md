@@ -127,6 +127,8 @@ HarkinianPad selects a landscape layout for the current device class:
   controls are disabled.
 - **Toggle:** use **Settings → Controls → Touch Controls** to hide or restore
   the gameplay overlay.
+- **Transparency:** enable **Touch Control Transparency** to reveal a 25%–100%
+  opacity slider. This is off by default and does not change touch targets.
 - **Customize:** choose **Customize Touch Layout** to move, resize, or hide
   controls in separate phone and tablet layouts.
 - **Fallback:** enable **Legacy Fixed Touch Controls** to use the previous

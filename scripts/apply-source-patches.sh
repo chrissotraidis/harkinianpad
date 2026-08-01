@@ -54,29 +54,42 @@ fi
 apply_patch "$SHIPWRIGHT" \
     "$ROOT/patches/shipwright-ios-app-icon.patch"
 
-# The customizable controller layers on the stable touch and native-HUD
-# patches and changes some of the same files. Detect the final state first so rerunning remains
+# The transparency patch is the final controller layer and overlaps the
+# customizable patch. Detect that final state first so rerunning remains
 # idempotent.
 if git -C "$SHIPWRIGHT" apply --reverse --check \
-    "$ROOT/patches/shipwright-ios-customizable-touch-controls.patch" \
+    "$ROOT/patches/shipwright-ios-touch-control-transparency.patch" \
     2>/dev/null; then
     echo "Already applied: shipwright-ios-touch-controls.patch"
     echo "Already applied: shipwright-ios-native-hud-touch-experiment.patch"
     echo "Already applied: shipwright-ios-customizable-touch-controls.patch"
+    echo "Already applied: shipwright-ios-touch-control-transparency.patch"
 else
+    # The customizable controller layers on the stable touch and native-HUD
+    # patches and changes some of the same files.
     if git -C "$SHIPWRIGHT" apply --reverse --check \
-        "$ROOT/patches/shipwright-ios-native-hud-touch-experiment.patch" \
+        "$ROOT/patches/shipwright-ios-customizable-touch-controls.patch" \
         2>/dev/null; then
         echo "Already applied: shipwright-ios-touch-controls.patch"
         echo "Already applied: shipwright-ios-native-hud-touch-experiment.patch"
+        echo "Already applied: shipwright-ios-customizable-touch-controls.patch"
     else
+        if git -C "$SHIPWRIGHT" apply --reverse --check \
+            "$ROOT/patches/shipwright-ios-native-hud-touch-experiment.patch" \
+            2>/dev/null; then
+            echo "Already applied: shipwright-ios-touch-controls.patch"
+            echo "Already applied: shipwright-ios-native-hud-touch-experiment.patch"
+        else
+            apply_patch "$SHIPWRIGHT" \
+                "$ROOT/patches/shipwright-ios-touch-controls.patch"
+            apply_patch "$SHIPWRIGHT" \
+                "$ROOT/patches/shipwright-ios-native-hud-touch-experiment.patch"
+        fi
         apply_patch "$SHIPWRIGHT" \
-            "$ROOT/patches/shipwright-ios-touch-controls.patch"
-        apply_patch "$SHIPWRIGHT" \
-            "$ROOT/patches/shipwright-ios-native-hud-touch-experiment.patch"
+            "$ROOT/patches/shipwright-ios-customizable-touch-controls.patch"
     fi
     apply_patch "$SHIPWRIGHT" \
-        "$ROOT/patches/shipwright-ios-customizable-touch-controls.patch"
+        "$ROOT/patches/shipwright-ios-touch-control-transparency.patch"
 fi
 
 APP_ICON_SOURCE="$ROOT/assets/AppIcon.appiconset"

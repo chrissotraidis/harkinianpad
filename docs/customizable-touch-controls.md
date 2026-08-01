@@ -25,6 +25,11 @@ The control stick cannot be hidden, and the permanent `•••` menu control i
 not editable. Starting the editor releases held input and temporarily disables
 the controls' normal gameplay handlers.
 
+**Touch Control Transparency** under **Settings > Controls** reveals a
+25%–100% **Touch Control Opacity** slider. The option is off by default, and
+the layout editor temporarily restores full opacity without changing the saved
+preference or any touch target.
+
 ## Persistence and layout rules
 
 Phone and tablet layouts are stored separately in `NSUserDefaults`:

@@ -223,12 +223,17 @@ Confirm that:
    input viewer.
 2. Disabling **Touch Controls** removes the overlay immediately; enabling it
    restores the overlay without restarting.
-3. Confirm the native A/B/C graphics move with their touch targets during
+3. Enable **Touch Control Transparency**, confirm the opacity slider appears,
+   and test 25%, 50%, and 100%. The UIKit controls and gameplay-native A/B/C
+   artwork should change together while their touch targets remain unchanged.
+   Confirm the value persists after relaunch and the layout editor remains
+   fully opaque.
+4. Confirm the native A/B/C graphics move with their touch targets during
    gameplay—including the compact iPhone arrangement—and the visible UIKit
    buttons return on title, file-select, and pause screens.
-4. Opening the menu hides every gameplay control, and closing it restores the
+5. Opening the menu hides every gameplay control, and closing it restores the
    overlay only when **Touch Controls** is enabled.
-5. Open **Customize Touch Layout** and confirm the editor can select, move,
+6. Open **Customize Touch Layout** and confirm the editor can select, move,
    resize, hide/show, reset, and save controls without
    changing the other device class's profile. Confirm the stick cannot be
    hidden and `•••` returns after Done. In gameplay, hold Z for 0.5 seconds:
@@ -237,11 +242,11 @@ Confirm that:
    opening the menu or backgrounding the app clears the latch. Enable
    **Legacy Fixed Touch Controls** and confirm the previous fixed UIKit layout
    returns and the editor is unavailable.
-6. A save can be created or selected and Link can be controlled in active
+7. A save can be created or selected and Link can be controlled in active
    gameplay for at least ten minutes.
-7. Disconnecting and reconnecting the controller does not crash the app and
+8. Disconnecting and reconnecting the controller does not crash the app and
    restores control without losing the current save.
-8. Rumble and motion input are recorded as supported, unsupported, or not
+9. Rumble and motion input are recorded as supported, unsupported, or not
    exposed for the exact controller model; do not infer either capability
    from the extended-gamepad declaration.
 

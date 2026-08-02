@@ -37,7 +37,8 @@ relicense Shipwright, third-party projects, or game material.
 
 | Option | Status | What to do |
 |---|---|---|
-| Developer-preview `.ipa` | **Available now** | [Download preview 0.1.0 build 3](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.3/HarkinianPad-0.1.0-preview.3-unsigned.ipa), then re-sign it with your Apple ID by following the [AltStore Classic guide](docs/INSTALL_IPA.md). |
+| Developer-preview `.ipa` | **Available with a computer** | [Download preview 0.1.0 build 3](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.3/HarkinianPad-0.1.0-preview.3-unsigned.ipa), then re-sign it with your Apple ID through AltStore Classic and AltServer on macOS or Windows by following the [installation guide](docs/INSTALL_IPA.md). |
+| AltStore PAL / computer-free install | **Not available** | The current IPA is not an AltStore PAL release. Installing AltStore Classic through PAL does not remove Classic's requirement for AltServer on a Mac or Windows PC. |
 | Local iPad build | **Available now** | Build and sign with your Apple development team using the instructions below. |
 | Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
 | App Store / TestFlight | **Not announced** | No listing or public TestFlight currently exists. |
@@ -238,8 +239,10 @@ maintainer-signed package, use `REQUIRE_SIGNED=1 scripts/package-ios.sh`.
 <summary><strong>Where is the IPA?</strong></summary>
 
 [Download the unsigned developer-preview IPA from GitHub Releases](https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.3).
-It is not an App Store or TestFlight build; follow the
-[AltStore Classic guide](docs/INSTALL_IPA.md) to sign it with your own Apple ID.
+It is not an App Store, TestFlight, or AltStore PAL build. A Mac or Windows PC
+running AltServer is required to sign it with your own Apple ID through
+[AltStore Classic](docs/INSTALL_IPA.md). There is currently no supported
+computer-free installation method.
 </details>
 
 <details>

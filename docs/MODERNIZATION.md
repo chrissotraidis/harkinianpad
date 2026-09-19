@@ -118,3 +118,32 @@ No device was installed, uninstalled or reset by this task. Reinstalling an old
 IPA requires the owner's existing signing identity, entitlements and bundle ID;
 update in place only after privately backing up the full app data container and
 verifying identity compatibility. Do not uninstall to bypass a mismatch.
+
+## Evidence recorded in this task
+
+- Six verifier regression cases pass: valid pristine/prepared states, an extra
+  edit inside a patched file, an extra file, changed executable mode, wrong pin,
+  and missing source. Existing controller-slot regression and repository safety
+  checks pass.
+- Complete prepared source verifies: Shipwright 11,949 entries (including its
+  icon overlay), libultraship 429, ZAPDTR 230, OTRExporter 176. There are no extra
+  private source changes relative to the independently prepared Preview 5 input.
+- Private maintained-source rehearsal commits, not published dependency pins:
+  Shipwright `ef646ebe6886631bd8585810e4985c1b23bc46df`, libultraship
+  `64c5ba695c67d294ae1002296872e2d7367c4d98`, ZAPDTR
+  `53cb40a6ec694d1c34dd272ec26de799b28aad99`. Each retains upstream ancestry;
+  reverse/reapply checks reproduce exact base/prepared Git trees. Bundles are
+  private recovery artifacts, not a public corresponding-source delivery claim.
+- Regenerated `soh.o2r` SHA-256
+  `5807dda0adb3d6c1ede1df0f77d34f33407153dd898654a17fcff7409e63db5d`;
+  all 1,042 extracted entries equal the anonymously retrieved Preview 5 archive.
+  ZIP bytes differ, so byte-reproducible packaging is not claimed.
+- Default iOS 14 rebuild failed during CMake's compiler probe: installed Xcode
+  27.0/SDK 27 only supports deployment targets 15.0 and later. The preserved
+  baseline cache records Xcode 26.6. The project default remains iOS 14; use a
+  compatible Xcode selected with `DEVELOPER_DIR` to qualify that shipping floor.
+  An explicit `DEPLOYMENT_TARGET=15.0` build is only additional compile evidence.
+
+Full migration, new runtime instrumentation, complete offline release-source
+qualification and a new release remain uncompleted. Mod-format compatibility and
+community research follow modernization; no OoTR website compatibility is claimed.

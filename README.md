@@ -323,8 +323,10 @@ The pinned Shipwright tree also has no top-level license. Shipwright's official
 [modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
 documents public forks, modifications, and distributable builds. The free,
 unsigned, ROM-free HarkinianPad developer preview follows that community
-modding model. Written upstream clarification remains an open task before
-paid access, commercial binary licensing, or official-store distribution.
+modding model. Maintained-source/history redistribution and complete source
+delivery remain open qualification questions, alongside paid access, commercial
+binary licensing and official-store distribution. See the
+[modernization record](docs/MODERNIZATION.md).
 </details>
 
 ## Project map

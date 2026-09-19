@@ -5,7 +5,8 @@ This is the final gate for a public source snapshot or downloadable IPA.
 ## Every public source update
 
 - [ ] `scripts/check-repo-safety.sh` passes.
-- [ ] The pinned source revisions replay without manual edits.
+- [ ] `scripts/verify-sources.py` passes on the prepared source; pins, file
+      contents and modes agree with `sources.lock.json`.
 - [ ] `scripts/build-ios.sh --device` produces the unsigned arm64 app.
 - [ ] `scripts/package-ios.sh` accepts that app and
       `REQUIRE_SIGNED=1 scripts/package-ios.sh` rejects it.
@@ -24,6 +25,8 @@ This is the final gate for a public source snapshot or downloadable IPA.
 - [ ] Distribution remains a free, unsigned, ROM-free community preview
       consistent with Shipwright's documented
       [modding and distributable-build workflow](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md).
+- [ ] Resolve the source/history distribution and full source-delivery gates
+      recorded in [modernization qualification](MODERNIZATION.md).
 - [ ] Build from a clean checkout at a tagged commit.
 - [ ] Use the stable bundle identifier
       `com.chrissotraidis.harkinianpad`.
@@ -35,7 +38,8 @@ This is the final gate for a public source snapshot or downloadable IPA.
 - [ ] Confirm the IPA contains only the ROM-free `soh.o2r`; it must never
       contain the user's ROM or generated `oot.o2r`.
 - [ ] Confirm the IPA carries `RIGHTS_AND_LICENSES.md` and the discovered
-      dependency license files under `ThirdPartyLicenses/`.
+      dependency license files under `ThirdPartyLicenses/`, plus a matching
+      `BUILD_PROVENANCE.json`.
 - [ ] For App Store or TestFlight distribution, add and audit the required
       Apple privacy manifest. The GitHub unsigned preview does not currently
       claim official-store readiness.
@@ -66,10 +70,12 @@ This is the final gate for a public source snapshot or downloadable IPA.
   coverage passes. Physical Bluetooth, wired, natural-sleep, full-mapping,
   rumble/motion, and two-controller acceptance is still incomplete.
 - The complete lifecycle/interruption matrix remains open.
-- Written Shipwright clarification remains open before paid access, commercial
-  binary licensing, or official-store distribution. It does not block the
-  free unsigned developer preview under Shipwright's documented community
-  modding workflow.
+- Shipwright maintained-source/history redistribution and complete source
+  delivery remain unqualified. The community modding guide does not settle
+  every component's rights. Paid/commercial/official-store use also requires
+  clarification; see [the scoped record](MODERNIZATION.md).
+- Xcode 27 cannot qualify the unchanged iOS 14 deployment floor; retain a
+  compatible toolchain for that release check.
 
 Controller and lifecycle gaps may be published as explicit developer-preview
 limitations. Every public IPA must carry the scoped rights notice and

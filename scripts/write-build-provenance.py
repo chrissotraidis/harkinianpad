@@ -26,7 +26,7 @@ def sha(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('app', type=Path)
-    parser.add_argument('--check', action='store_true', help='verify an existing unsigned build report')
+    parser.add_argument('--check', action='store_true', help='verify an existing build report')
     args = parser.parse_args()
     app = args.app.resolve()
     info = plistlib.loads((app / 'Info.plist').read_bytes())
@@ -42,7 +42,10 @@ def main():
     report['source_lock_sha256'] = sha(ROOT / 'sources.lock.json')
     report['qualification'] = 'Build identity only; complete offline source delivery and redistribution qualification pending.'
     if args.check:
-        recorded = json.loads((app.with_suffix('.build.json')).read_text())
+        try:
+            recorded = json.loads(app.with_suffix('.build.json').read_text())
+        except (OSError, ValueError):
+            parser.exit(1, 'Missing or invalid build provenance: rebuild before packaging.\n')
         if recorded != report:
             parser.exit(1, 'Build provenance mismatch: rebuild before packaging.\n')
     else:

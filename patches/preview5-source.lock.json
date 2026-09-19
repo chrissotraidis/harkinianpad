@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "components": [
+    {
+      "name": "Shipwright",
+      "url": "https://github.com/HarbourMasters/Shipwright.git",
+      "commit": "da4e6dc3321bda48a313b162261156580bc376f4",
+      "path": "sources/Shipwright",
+      "patches": [
+        {
+          "path": "patches/shipwright-ios.patch"
+        },
+        {
+          "path": "patches/shipwright-ios-first-run.patch"
+        },
+        {
+          "path": "patches/shipwright-ios-app-icon.patch"
+        },
+        {
+          "path": "patches/shipwright-ios-touch-controls.patch"
+        },
+        {
+          "path": "patches/shipwright-ios-native-hud-touch-experiment.patch"
+        },
+        {
+          "path": "patches/shipwright-ios-customizable-touch-controls.patch"
+        },
+        {
+          "path": "patches/shipwright-ios-touch-control-transparency.patch"
+        }
+      ],
+      "overlays": [
+        {
+          "source": "assets/AppIcon.appiconset/Contents.json",
+          "destination": "soh/ios/Assets.xcassets/AppIcon.appiconset/Contents.json"
+        },
+        {
+          "source": "assets/AppIcon.appiconset/AppIcon.png",
+          "destination": "soh/ios/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+        }
+      ]
+    },
+    {
+      "name": "libultraship",
+      "url": "https://github.com/Kenix3/libultraship.git",
+      "commit": "2bfbde3a72c119f8073ad762ec6be131dff5df66",
+      "path": "sources/Shipwright/libultraship",
+      "patches": [
+        {
+          "path": "patches/libultraship-ios.patch"
+        }
+      ]
+    },
+    {
+      "name": "ZAPDTR",
+      "url": "https://github.com/HarbourMasters/ZAPDTR.git",
+      "commit": "be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf",
+      "path": "sources/Shipwright/ZAPDTR",
+      "patches": [
+        {
+          "path": "patches/zapdtr-ios.patch",
+          "ignore_space_change": true
+        }
+      ]
+    },
+    {
+      "name": "OTRExporter",
+      "url": "https://github.com/HarbourMasters/OTRExporter.git",
+      "commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d",
+      "path": "sources/Shipwright/OTRExporter",
+      "patches": []
+    }
+  ]
+}

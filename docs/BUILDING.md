@@ -1,12 +1,16 @@
 # Building HarkinianPad for iOS and iPadOS
 
 These instructions build only `chrissotraidis/harkinianpad`. Shipwright,
-libultraship, ZAPDTR, and OTRExporter are pinned, disposable upstream source
-inputs; do not push HarkinianPad changes to forks of them.
+libultraship, ZAPDTR, and OTRExporter are immutable submodule inputs. Modified
+components retain upstream ancestry in dedicated maintained branches. The
+[modernization record](MODERNIZATION.md) records pins, parity and remaining release qualification.
 
 ## Requirements
 
-- macOS with Xcode and its command-line tools
+- macOS with Xcode and its command-line tools; the shipping iOS 14 floor
+  requires a compatible Xcode (the preserved build used 26.6). Xcode 27 rejects
+  iOS 14; `DEPLOYMENT_TARGET=15.0` is a separate compile experiment, not a
+  replacement for that shipping-platform qualification.
 - [Homebrew](https://brew.sh)
 - a legally acquired supported Ocarina of Time ROM for first-run extraction
 - for physical-device installation: an Apple ID configured in Xcode, a unique
@@ -38,13 +42,16 @@ scripts/build-ios.sh --simulator
 ```
 
 The ROM is deliberately not a compile input. The wrapper fetches and verifies
-every pinned source revision, disables upstream push URLs, applies the tracked
-patches, generates the ROM-free port archive, and builds the complete app.
+every maintained submodule revision without replaying patches, generates the ROM-free port archive, and builds the complete app.
 Keeping the ROM in `ref/` makes it available for later local import while
 proving that it cannot leak into source control or the built product.
 
 Use `scripts/build-ios.sh --device` for the unsigned device compile proof.
 The individual commands below remain available for diagnosis and CI parity.
+Builds emit stage timings and source identities. `sources.lock.json` is the pin
+inventory; `scripts/verify-sources.py` checks the complete prepared trees before
+configuration. Unknown local edits stop the build without resetting sources.
+Preserve and inspect those edits; do not delete a checkout as a repair shortcut.
 
 ## Reproduce the source and app build
 
@@ -57,6 +64,7 @@ scripts/configure-ios.sh --soh
 cmake --build build-ios-soh --target soh --config Release -- \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
   -destination generic/platform=iOS
+scripts/write-build-provenance.py build-ios-soh/soh/Release-iphoneos/HarkinianPad.app
 ```
 
 The unsigned device product is
@@ -135,6 +143,7 @@ scripts/configure-ios.sh --soh
 
 cmake --build build-ios-soh --target soh --config Release -- \
   -destination generic/platform=iOS
+scripts/write-build-provenance.py build-ios-soh/soh/Release-iphoneos/HarkinianPad.app
 ```
 
 If automatic signing needs to register the device or create a profile, open
@@ -162,7 +171,13 @@ embedded provisioning profile:
 REQUIRE_SIGNED=1 scripts/package-ios.sh
 ```
 
-Both modes refuse Simulator products, stale signing material, ROMs,
+`build-ios.sh` writes the provenance sidecar automatically. When building
+manually in Xcode, run `scripts/write-build-provenance.py` against the exact
+just-built app before packaging; never use it to relabel an old binary. The
+sidecar stays outside the signed app and is included at the IPA root as
+`BUILD_PROVENANCE.json`. Packaging checks source and executable identity.
+
+Both modes refuse stale/missing provenance, Simulator products, stale signing material, ROMs,
 ROM-derived `oot*.o2r`/`.otr` data, or a `soh.o2r` containing prohibited
 inputs. The script writes an ignored IPA under `artifacts/` and prints its
 bundle identifier, version, build number, and SHA-256.

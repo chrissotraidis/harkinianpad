@@ -22,13 +22,14 @@ completion.
   port archive remains ignored source/build output and may be packaged into
   the app.
 - `chrissotraidis/harkinianpad` is the only owned project repository and the
-  only repository to which HarkinianPad work is pushed.
+  app repository; modified dependency source lives in the dedicated forks
+  selected by [sources.lock.json](../sources.lock.json).
 - Treat Shipwright, libultraship, ZAPDTR, and OTRExporter as pinned upstream
-  source inputs. Keep every HarkinianPad-owned port change in this repository;
-  do not publish project changes to forks of those inputs.
+  source inputs. Maintain port changes as ordinary source commits in the
+  dedicated component branches; preserve original upstream ancestry.
 - Keep `ENABLE_SCRIPTING` hard-disabled for iOS.
 - Keep engine-layer and application-layer changes separated within
-  HarkinianPad's maintained patch/source layout.
+  HarkinianPad's maintained component source layout.
 - Treat local, CI, Simulator, physical-device, signing, audio, and controller
   evidence as separate gates.
 - Make the smallest maintainable change for the first reproducible failure,
@@ -44,10 +45,11 @@ completion.
 | ZAPDTR | Shipwright-pinned upstream source input | `be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf` |
 | OTRExporter | Shipwright-pinned upstream source input | `c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d` |
 
-`scripts/clone-sources.sh` checks out these exact upstream revisions. Local
-source checkouts are disposable build inputs under git-ignored `sources/`;
-the durable implementation, patches, scripts, documentation, and evidence
-belong to HarkinianPad.
+The table above records the original upstream bases. Current selected commits
+and fork URLs are in [sources.lock.json](../sources.lock.json). Normal builds
+initialize immutable submodules and verify them without replaying patches.
+The dated findings below retain historical preparation evidence; see
+[modernization qualification](MODERNIZATION.md) for the replacement workflow.
 
 ## Milestone queue
 

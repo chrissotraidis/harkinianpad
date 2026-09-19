@@ -61,6 +61,9 @@ if [ "${REQUIRE_SIGNED:-0}" = "1" ] && [ "$signature_state" != "signed" ]; then
     exit 1
 fi
 
+# Products must carry identity from their own successful build.
+"$ROOT/scripts/write-build-provenance.py" --check "$APP" >/dev/null
+
 version="$(/usr/libexec/PlistBuddy \
     -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")"
 build_number="$(/usr/libexec/PlistBuddy \
@@ -88,6 +91,7 @@ if [ ! -f "$ROOT/RIGHTS_AND_LICENSES.md" ]; then
     exit 1
 fi
 cp "$ROOT/RIGHTS_AND_LICENSES.md" "$package_root/RIGHTS_AND_LICENSES.md"
+cp "${APP%.app}.build.json" "$package_root/BUILD_PROVENANCE.json"
 
 licenses_dir="$package_root/ThirdPartyLicenses"
 license_count=0
@@ -111,7 +115,7 @@ fi
 ditto -c -k --norsrc --keepParent "$package_root/Payload" "$output"
 (
     cd "$package_root"
-    zip -q -r "$output" RIGHTS_AND_LICENSES.md ThirdPartyLicenses
+    zip -q -r "$output" RIGHTS_AND_LICENSES.md ThirdPartyLicenses BUILD_PROVENANCE.json
 )
 
 ipa_entries="$(unzip -Z1 "$output")"
@@ -120,7 +124,8 @@ if ! grep -Fxq 'Payload/HarkinianPad.app/HarkinianPad' \
     echo "IPA payload verification failed: $output" >&2
     exit 1
 fi
-if ! grep -Fxq 'RIGHTS_AND_LICENSES.md' <<< "$ipa_entries" ||
+if ! grep -Fxq 'BUILD_PROVENANCE.json' <<< "$ipa_entries" ||
+   ! grep -Fxq 'RIGHTS_AND_LICENSES.md' <<< "$ipa_entries" ||
    ! grep -Fq 'ThirdPartyLicenses/' <<< "$ipa_entries"; then
     echo "IPA licensing-notice verification failed: $output" >&2
     exit 1

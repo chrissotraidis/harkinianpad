@@ -27,8 +27,11 @@ as a native iOS/iPadOS app. It renders through Metal, imports a user-provided
 supported Ocarina of Time ROM through Files, and includes a landscape touch
 controller that can be hidden whenever a physical controller is connected.
 
-This repository contains the mobile integration and reproducible build
-scripts. It does **not** contain Ocarina of Time, a ROM, or a playable
+This repository contains the mobile integration and pinned build scripts.
+The exact maintained forks and pins are in [sources.lock.json](sources.lock.json).
+See [mod compatibility and support priorities](docs/MOD_SUPPORT.md).
+The [source-maintenance qualification](docs/MODERNIZATION.md) records the
+remaining source-delivery and reproducibility boundaries. It does **not** contain Ocarina of Time, a ROM, or a playable
 ROM-derived archive. See the scoped
 [`rights and licensing boundary`](RIGHTS_AND_LICENSES.md); it does not
 relicense Shipwright, third-party projects, or game material.
@@ -219,8 +222,8 @@ emulator. A Majora's Mask ROM cannot be substituted for Ocarina of Time data.
 
 ```mermaid
 flowchart LR
-    A["HarkinianPad scripts"] --> B["Pinned upstream source"]
-    B --> C["Maintained iOS patches"]
+    A["HarkinianPad scripts"] --> B["Pinned maintained source"]
+    B --> C["Committed iOS integration"]
     C --> D["iOS app or unsigned preview IPA"]
     E["Your supported ROM"] --> F["Files-visible app folder"]
     D --> G["Local extraction"]
@@ -228,8 +231,8 @@ flowchart LR
     G --> H["Local oot.o2r and gameplay"]
 ```
 
-The compile never reads your ROM. `scripts/build-ios.sh` fetches exact upstream
-revisions, disables their push URLs, applies the maintained patches, generates
+The compile never reads your ROM. `scripts/build-ios.sh` fetches exact maintained
+submodule commits, verifies their contents and modes, generates
 Shipwright's ROM-free `soh.o2r`, and builds the app. Your ROM is introduced
 only after installation.
 
@@ -322,8 +325,10 @@ The pinned Shipwright tree also has no top-level license. Shipwright's official
 [modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
 documents public forks, modifications, and distributable builds. The free,
 unsigned, ROM-free HarkinianPad developer preview follows that community
-modding model. Written upstream clarification remains an open task before
-paid access, commercial binary licensing, or official-store distribution.
+modding model. GitHub-hosted maintenance follows those explicit fork instructions. Complete
+release-source distribution remains unqualified, alongside paid access, commercial
+binary licensing and official-store distribution. See the
+[modernization record](docs/MODERNIZATION.md).
 </details>
 
 ## Project map
@@ -333,7 +338,7 @@ paid access, commercial binary licensing, or official-store distribution.
 | [`scripts/build-ios.sh`](scripts/build-ios.sh) | Complete Simulator or device build |
 | [`scripts/package-ios.sh`](scripts/package-ios.sh) | Unsigned/signed IPA and game-data audit |
 | [`scripts/check-repo-safety.sh`](scripts/check-repo-safety.sh) | Fast tracked-asset, history, patch, script, and documentation gate |
-| [`patches/`](patches/) | HarkinianPad changes replayed onto pinned upstream source |
+| [`patches/`](patches/) | Historical Preview 5 patch mapping; not used by normal builds |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Full build, signing, installation, and testing guide |
 | [`docs/INSTALL_IPA.md`](docs/INSTALL_IPA.md) | Developer-preview IPA installation with AltStore Classic |
 | [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md) | Source and IPA publication gates |
@@ -343,7 +348,7 @@ paid access, commercial binary licensing, or official-store distribution.
 | [`docs/remaining-work.md`](docs/remaining-work.md) | Evidence ledger and remaining gates |
 | [`ref/`](ref/) | Ignored local reference area; only its safety README is tracked |
 
-Generated source trees, build directories, artifacts, ROMs, and ROM-derived
+Build directories, artifacts, ROMs, and ROM-derived
 archives are ignored and must never be committed.
 
 ## Contributing and support

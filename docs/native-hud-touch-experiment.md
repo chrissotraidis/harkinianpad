@@ -49,9 +49,10 @@ The first slice deliberately tests alignment and interaction before scaling:
    layer opacity, disabling hit testing, or changing their SDL mappings.
 5. Leaving eligible gameplay or disabling the setting restores UIKit artwork.
 
-The implementation is isolated in
-`patches/shipwright-ios-native-hud-touch-experiment.patch`, applied after the
-stable `shipwright-ios-touch-controls.patch`.
+The historical implementation was recorded in
+`patches/shipwright-ios-native-hud-touch-experiment.patch`, layered after the
+stable touch patch. It is now ordinary maintained Shipwright source; normal
+builds do not replay either patch. See [the migration mapping](MODERNIZATION.md).
 
 ## Known limits
 

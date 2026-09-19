@@ -1,0 +1,3 @@
+[submodule "sources/Shipwright"]
+	path = sources/Shipwright
+	url = https://github.com/chrissotraidis/Shipwright.git

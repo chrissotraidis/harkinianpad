@@ -39,3 +39,7 @@ xcuserdata/
 .vscode/
 .idea/
 *.log
+
+# Private task evidence
+/work/
+__pycache__/

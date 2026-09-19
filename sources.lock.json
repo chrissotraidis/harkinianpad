@@ -1,0 +1,41 @@
+{
+  "schema": 2,
+  "components": [
+    {
+      "name": "Shipwright",
+      "url": "https://github.com/chrissotraidis/Shipwright.git",
+      "commit": "f46021a168be3c6e5de00e395d7ab3c2a8112482",
+      "path": "sources/Shipwright",
+      "patches": [],
+      "upstream_url": "https://github.com/HarbourMasters/Shipwright.git",
+      "upstream_commit": "da4e6dc3321bda48a313b162261156580bc376f4"
+    },
+    {
+      "name": "libultraship",
+      "url": "https://github.com/chrissotraidis/libultraship.git",
+      "commit": "7b0823020c9772c4d87291e221dd54b302b78bf6",
+      "path": "sources/Shipwright/libultraship",
+      "patches": [],
+      "upstream_url": "https://github.com/Kenix3/libultraship.git",
+      "upstream_commit": "2bfbde3a72c119f8073ad762ec6be131dff5df66"
+    },
+    {
+      "name": "ZAPDTR",
+      "url": "https://github.com/chrissotraidis/ZAPDTR.git",
+      "commit": "150d38a6569fa6c7a26cf1c7203e23f82ae19fec",
+      "path": "sources/Shipwright/ZAPDTR",
+      "patches": [],
+      "upstream_url": "https://github.com/HarbourMasters/ZAPDTR.git",
+      "upstream_commit": "be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf"
+    },
+    {
+      "name": "OTRExporter",
+      "url": "https://github.com/harbourmasters/OTRExporter",
+      "commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d",
+      "path": "sources/Shipwright/OTRExporter",
+      "patches": [],
+      "upstream_url": "https://github.com/harbourmasters/OTRExporter",
+      "upstream_commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d"
+    }
+  ]
+}

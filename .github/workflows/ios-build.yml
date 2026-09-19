@@ -30,6 +30,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Test source verification boundaries
+        run: python3 -m unittest discover -s tests -p '*_test.py'
+
       - name: Check tracked assets, history, scripts, patches, and docs
         run: scripts/check-repo-safety.sh
 
@@ -53,10 +56,13 @@ jobs:
           path: |
             build-host-soh/_deps
             build-ios-soh/_deps
-          key: harkinianpad-ios-${{ runner.os }}-${{ hashFiles('patches/**', 'scripts/*.sh') }}
+          key: harkinianpad-ios-${{ runner.os }}-${{ hashFiles('sources.lock.json', 'patches/**', 'scripts/**') }}
 
       - name: Run controller lifecycle regression
         run: scripts/test-controller-reconnect.sh
+
+      - name: Test maintained dependency preservation
+        run: python3 -m unittest discover -s tests -p '*_test.py'
 
       - name: Reproduce unsigned arm64 iPhoneOS app
         run: scripts/build-ios.sh --device

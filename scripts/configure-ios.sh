@@ -17,6 +17,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/sources/Shipwright"
+"$ROOT/scripts/verify-sources.py" >/dev/null
 DEPLOYMENT_TARGET="${DEPLOYMENT_TARGET:-14.0}"   # LUS CI value; real floor TBD (open question Q10)
 BUNDLE_ID="${BUNDLE_ID:-com.chrissotraidis.harkinianpad}"
 HARKINIANPAD_VERSION="${HARKINIANPAD_VERSION:-0.1.0}"

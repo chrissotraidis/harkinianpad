@@ -9,8 +9,8 @@ uncommitted README and build-history document.
 1. Restore and hash-verify the complete private checkout, including nested Git
    history and accepted packages; prepare Preview 5 independently and compare it.
 2. Record each component's base and prepared identity. Rehearse ordinary source
-   commits privately; retain production preparation until redistribution and
-   complete source-delivery questions are resolved.
+   commits preserving upstream history; replace production preparation only after
+   exact source parity, keeping broader release-delivery questions explicit.
 3. Fail closed on unexpected source changes and pin mismatches; add useful build
    provenance and diagnostics without changing gameplay or upgrading upstream.
 4. Run regression/build/package checks and document exactly what remains.
@@ -132,7 +132,8 @@ verifying identity compatibility. Do not uninstall to bypass a mismatch.
 
 ## Evidence recorded in this task
 
-- Six verifier regression cases pass: valid pristine/prepared states, an extra
+- Twelve source/provenance regression cases pass, including maintained parent
+  gitlink/URL disagreement and source drift. Legacy comparison cases cover: valid pristine/prepared states, an extra
   edit inside a patched file, an extra file, changed executable mode, wrong pin,
   and missing source. Existing controller-slot regression and repository safety
   checks pass.

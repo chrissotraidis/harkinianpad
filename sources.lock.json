@@ -30,11 +30,11 @@
     },
     {
       "name": "OTRExporter",
-      "url": "https://github.com/HarbourMasters/OTRExporter.git",
+      "url": "https://github.com/harbourmasters/OTRExporter",
       "commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d",
       "path": "sources/Shipwright/OTRExporter",
       "patches": [],
-      "upstream_url": "https://github.com/HarbourMasters/OTRExporter.git",
+      "upstream_url": "https://github.com/harbourmasters/OTRExporter",
       "upstream_commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d"
     }
   ]

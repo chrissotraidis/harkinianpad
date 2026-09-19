@@ -37,6 +37,41 @@ class SourceVerificationTest(unittest.TestCase):
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.tree), *args], text=True)
 
+    def maintained_fixture(self):
+        self.git('add', '.')
+        self.git('commit', '-qm', 'maintained source')
+        pin = self.git('rev-parse', 'HEAD').strip()
+        self.lock['schema'] = 2
+        self.lock['components'][0].update(commit=pin, patches=[])
+        (self.root / '.gitmodules').write_text('[submodule \"source\"]\n path = source\n url = https://example.invalid/source\n')
+        for args in [('init', '-q'), ('config', 'user.name', 'Fixture'),
+                     ('config', 'user.email', 'fixture@example.invalid'),
+                     ('update-index', '--add', '--cacheinfo', '160000', pin, 'source'),
+                     ('add', '.gitmodules'), ('commit', '-qm', 'pin source')]:
+            subprocess.check_call(['git', '-C', str(self.root), *args])
+        self.save_lock()
+
+    def test_maintained_graph(self):
+        self.maintained_fixture()
+        self.assertEqual(verify.verify(self.root)['profile'], 'maintained')
+        (self.tree / 'file.cpp').write_text('unreviewed change\n')
+        with self.assertRaisesRegex(ValueError, 'unexpected source'):
+            verify.verify(self.root)
+
+    def test_parent_url_disagrees(self):
+        self.maintained_fixture()
+        self.lock['components'][0]['url'] = 'https://example.invalid/wrong'
+        self.save_lock()
+        with self.assertRaisesRegex(ValueError, 'submodule URL'):
+            verify.verify(self.root)
+
+    def test_parent_gitlink_disagrees(self):
+        self.maintained_fixture()
+        self.lock['components'][0]['commit'] = '0' * 40
+        self.save_lock()
+        with self.assertRaisesRegex(ValueError, 'parent gitlink'):
+            verify.verify(self.root)
+
     def test_prepared_and_pristine(self):
         self.assertEqual(verify.verify(self.root)['components'][0]['files'], 1)
         self.git('checkout', '--', 'file.cpp')

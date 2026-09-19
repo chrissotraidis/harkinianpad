@@ -28,6 +28,12 @@ def verify(root=ROOT, pristine=False):
             entry = git(parent_tree, 'ls-tree', 'HEAD', '--', relative).decode().strip()
             if not entry or entry.split()[0:3] != ['160000', 'commit', component['commit']]:
                 raise ValueError(f"{component['name']}: parent gitlink disagrees with lock")
+            paths = git(parent_tree, 'config', '--blob', 'HEAD:.gitmodules', '--get-regexp',
+                        r'^submodule\..*\.path$').decode().splitlines()
+            keys = [line.split(None, 1)[0][:-5] for line in paths if line.split(None, 1)[1] == relative]
+            if len(keys) != 1 or git(parent_tree, 'config', '--blob', 'HEAD:.gitmodules',
+                                     '--get', keys[0] + '.url').decode().strip() != component['url']:
+                raise ValueError(f"{component['name']}: parent submodule URL disagrees with lock")
     for component in lock['components']:
         tree = root / component['path']
         head = git(tree, 'rev-parse', 'HEAD').decode().strip()

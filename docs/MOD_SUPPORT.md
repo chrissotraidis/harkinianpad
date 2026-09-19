@@ -59,6 +59,12 @@ These are recurring recommendations, not a measured ranking of all players.
 | Cel shading | [roborich's source/build release](https://github.com/roborich/Shipwright/releases/tag/9.2.3-celshade0.5), [community interest](https://www.reddit.com/r/shipofharkinian/comments/1ul0twp/a_great_way_to_play_oot/) | A renderer/code fork, not merely a texture archive. Compare its actual changes and Metal path in a later branch; do not upgrade this migration's upstream. |
 | Other expansion / ROM hacks | [community discussion](https://www.reddit.com/r/shipofharkinian/comments/1w8rgmx/howcome_were_not_seeing_expansion_mods/) | Establish native source/runtime support individually. A ROM hack advertised for N64 emulators is not evidence of SoH compatibility. |
 
+The current Reloaded [v11.0.0 release](https://github.com/GhostlyDark/OoT-Reloaded/releases/tag/v11.0.0)
+contains a SoH HD O2R package (`oot-reloaded-v11.0.0-soh-o2r-hd.7z`,
+626,160,013 compressed bytes). Its GLideN64 and rt64 variants are different
+formats. Start qualification with HD rather than assuming a multi-gigabyte 4K
+pack is appropriate on mobile; no memory/performance result has been measured.
+
 ## Concrete gaps in the current implementation
 
 Source locations are relative to the Shipwright submodule:

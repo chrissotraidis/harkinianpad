@@ -25,7 +25,7 @@ This is the final gate for a public source snapshot or downloadable IPA.
 - [ ] Distribution remains a free, unsigned, ROM-free community preview
       consistent with Shipwright's documented
       [modding and distributable-build workflow](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md).
-- [ ] Resolve the source/history distribution and full source-delivery gates
+- [ ] Resolve the broader release-source distribution and full source-delivery gates
       recorded in [modernization qualification](MODERNIZATION.md).
 - [ ] Build from a clean checkout at a tagged commit.
 - [ ] Use the stable bundle identifier
@@ -70,7 +70,7 @@ This is the final gate for a public source snapshot or downloadable IPA.
   coverage passes. Physical Bluetooth, wired, natural-sleep, full-mapping,
   rumble/motion, and two-controller acceptance is still incomplete.
 - The complete lifecycle/interruption matrix remains open.
-- Shipwright maintained-source/history redistribution and complete source
+- Broader Shipwright release-source redistribution and complete source
   delivery remain unqualified. The community modding guide does not settle
   every component's rights. Paid/commercial/official-store use also requires
   clarification; see [the scoped record](MODERNIZATION.md).

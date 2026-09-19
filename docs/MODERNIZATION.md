@@ -47,7 +47,7 @@ ancestry in genuine GitHub-connected forks. Shared default branches are unchange
 
 | Component | Selected commit | Old preparation mapping |
 |---|---|---|
-| [Shipwright](https://github.com/chrissotraidis/Shipwright/tree/codex/harkinianpad-ios) | `f93801ba0243656116a2cc9cd9bf4c3b9c013570` | Seven Shipwright patches plus icon overlay become parity commit `be876f2c607ff3c96b08af05ba64ab912ca61e8d`; selected commit only updates nested gitlinks/URLs |
+| [Shipwright](https://github.com/chrissotraidis/Shipwright/tree/codex/harkinianpad-ios) | `79b0907efc2d5631effb35dea88192ee5fc4395d` | Seven Shipwright patches plus icon overlay become parity commit `be876f2c607ff3c96b08af05ba64ab912ca61e8d`; `f93801b` updates nested gitlinks/URLs; `79b0907` adds bounded mod-load logging |
 | [libultraship](https://github.com/chrissotraidis/libultraship/tree/codex/harkinianpad-ios) | `535f82618996eed61efdc9298548bdb9a6270e09` | `libultraship-ios.patch` |
 | [ZAPDTR](https://github.com/chrissotraidis/ZAPDTR/tree/codex/harkinianpad-ios) | `150d38a6569fa6c7a26cf1c7203e23f82ae19fec` | `zapdtr-ios.patch` |
 | OTRExporter | `c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d` | Unmodified upstream |
@@ -97,8 +97,9 @@ missing report. This is build provenance, not complete dependency source deliver
 or bit-for-bit reproducibility. Signed development bundles are not modified after
 signing; the report remains outside the app payload. Existing runtime logs
 already use timestamps, asynchronous Release logging, rotation, and controller
-reconciliation events. Additional runtime instrumentation is a separate pending
-source change; no new runtime telemetry is claimed here.
+reconciliation events. The separate `79b0907` source commit adds mod discovery/request/load and duplicate-name
+counts at initialization, without pack paths, seed contents or uploads. It does
+not change mod ordering or enable behavior. Hardware observation remains pending.
 
 The identity report contains no absolute paths, usernames, signing identities,
 ROM names, save data or persistent device identifiers. Existing compiler and

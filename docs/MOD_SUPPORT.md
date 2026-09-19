@@ -86,7 +86,9 @@ Source locations are relative to the Shipwright submodule:
    implementation was found. Merely copying a shared seed into Documents does
    not prove it is selectable. Add a Files picker for SoH seeds and packs,
    sandbox-relative storage, duplicate handling and cancellation recovery.
-5. Diagnostics should identify the app/source build, format, load result, pack
+5. Maintenance now logs mod discovery, requested/load counts and duplicate-name
+   counts at initialization. No per-pack paths or spoiler contents are added.
+   Further diagnostics should identify the app/source build, format, load result, pack
    count and effective order without absolute container paths, save contents or
    spoiler data. Export only after a user request; no background upload.
 

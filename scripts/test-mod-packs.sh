@@ -15,8 +15,8 @@ else
     echo "OTR fixture skipped: build host dependencies first"
 fi
 "${CXX:-c++}" -std=c++20 -Wall -Wextra -Werror \
-    "${ZIP_CFLAGS[@]}" "${MPQ_CFLAGS[@]}" -I"$ROOT/sources/Shipwright/soh/soh/Enhancements" \
+    "${ZIP_CFLAGS[@]}" ${MPQ_CFLAGS[@]+"${MPQ_CFLAGS[@]}"} -I"$ROOT/sources/Shipwright/soh/soh/Enhancements" \
     "$ROOT/tests/mod_packs_test.cpp" \
     "$ROOT/sources/Shipwright/soh/soh/Enhancements/ModPackImport.cpp" \
-    "${ZIP_LIBS[@]}" "${MPQ_LIBS[@]}" -o "$TEST_DIR/mod_packs_test"
+    "${ZIP_LIBS[@]}" ${MPQ_LIBS[@]+"${MPQ_LIBS[@]}"} -o "$TEST_DIR/mod_packs_test"
 "$TEST_DIR/mod_packs_test" "$TEST_DIR" "$@"

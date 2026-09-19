@@ -35,7 +35,7 @@ Imports use new `Documents/mods/Import-…` folders and never overwrite an exist
 pack. Each selected ZIP/file succeeds or rolls back independently; a multi-file
 selection reports partial failures. A staged directory becomes visible only
 after successful copy and archive validation. Imported packages are capped at
-16 GiB of pack payload per selection and 100,000 ZIP entries. Symlink discovery
+16 GiB of pack payload per selected file or ZIP and 100,000 ZIP entries. Symlink discovery
 is excluded. Archive validation checks container structure, not whether a pack's
 resources are correct for this runtime. Keep backups of packs you edit in Files.
 

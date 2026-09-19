@@ -369,3 +369,7 @@ downloads, or playable ROM-derived data.
 This project builds on Ship of Harkinian, libultraship, ZAPDTR, OTRExporter,
 the Ocarina of Time decompilation project, SDL, and their contributors. All
 projects, copyrights, and trademarks belong to their respective owners.
+
+The mod-pack development follow-up adds Files import and per-pack controls; see
+[pack formats, creator links and tested limits](docs/MOD_SUPPORT.md). These changes
+are not included in public Preview 5.

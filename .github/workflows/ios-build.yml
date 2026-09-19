@@ -67,6 +67,9 @@ jobs:
       - name: Reproduce unsigned arm64 iPhoneOS app
         run: scripts/build-ios.sh --device
 
+      - name: Test pack import and selection boundaries
+        run: scripts/test-mod-packs.sh
+
       - name: Audit unsigned package and signing gate
         run: |
           scripts/package-ios.sh

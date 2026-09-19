@@ -58,6 +58,14 @@ int main(int argc, char** argv) {
     Zip(bundle, {{"one/same.o2r", Read(good)}, {"two/same.o2r", Read(good)}, {"README.txt", "ignored"}});
     assert(ModPackImport::Import(bundle, root / "bundle") == 2);
     assert(!fs::exists(root / "bundle/README.txt"));
+    Zip(bundle, {{"./one/good.o2r", Read(good)}, {"__MACOSX/one/._good.o2r", "AppleDouble metadata"},
+                 {"one/._other.otr", "AppleDouble metadata"}});
+    assert(ModPackImport::Import(bundle, root / "finder") == 1);
+    assert(fs::exists(root / "finder/one/good.o2r"));
+    assert(!fs::exists(root / "finder/__MACOSX"));
+    Zip(bundle, {{"one/good.o2r", Read(good)}, {"./one/good.o2r", Read(good)}});
+    Reject([&] { ModPackImport::Import(bundle, root / "aliased"); });
+    assert(!fs::exists(root / "aliased")); // Normalized aliases cannot overwrite earlier entries.
     Zip(bundle, {{"../outside.o2r", Read(good)}});
     Reject([&] { ModPackImport::Import(bundle, root / "traversal"); });
     assert(!fs::exists(root / "traversal") && !fs::exists(root / "outside.o2r"));

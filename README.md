@@ -15,7 +15,7 @@
   <img alt="iOS 14+" src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-14%2B-0A84FF?logo=apple">
   <img alt="Metal renderer" src="https://img.shields.io/badge/renderer-Metal-5E5CE6">
   <img alt="Physical iPad tested" src="https://img.shields.io/badge/physical%20iPad-tested-30D158">
-  <a href="https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.5"><img alt="Download developer preview IPA" src="https://img.shields.io/badge/IPA-developer%20preview-FF9F0A"></a>
+  <a href="https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.6"><img alt="Download developer preview IPA" src="https://img.shields.io/badge/IPA-developer%20preview-FF9F0A"></a>
   <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
 </p>
 
@@ -40,7 +40,7 @@ relicense Shipwright, third-party projects, or game material.
 
 | Option | Status | What to do |
 |---|---|---|
-| Developer-preview `.ipa` | **Available with a computer** | [Download preview 0.1.0 build 5](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.5/HarkinianPad-0.1.0-preview.5-unsigned.ipa), then re-sign it with your Apple ID through AltStore Classic and AltServer on macOS or Windows by following the [installation guide](docs/INSTALL_IPA.md). |
+| Developer-preview `.ipa` | **Available with a computer** | [Download preview 0.1.0 build 6](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.6/HarkinianPad-0.1.0-preview.6-unsigned.ipa), then re-sign it with your Apple ID through AltStore Classic and AltServer on macOS or Windows by following the [installation guide](docs/INSTALL_IPA.md). |
 | AltStore PAL / computer-free install | **Not available** | The current IPA is not an AltStore PAL release. Installing AltStore Classic through PAL does not remove Classic's requirement for AltServer on a Mac or Windows PC. |
 | Local iPad build | **Available now** | Build and sign with your Apple development team using the instructions below. |
 | Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
@@ -248,15 +248,13 @@ identifier `com.chrissotraidis.harkinianpad`. The package is named
 certificate or provisioning profile; a sideload tool such as AltStore Classic
 must re-sign it for the installer's device.
 
-[Build 6 CI artifact](https://github.com/chrissotraidis/harkinianpad/actions/runs/35446762872/artifacts/10586107486)
-contains the audited iOS/iPadOS 14+ IPA and checksum from main commit
-`96eb768`. GitHub Actions downloads require sign-in and are retained for 30 days.
-The published Preview 5 release remains available below.
+Published Preview 6 contains the audited iOS/iPadOS 14+ IPA from commit
+`96eb768`, with checksum and build provenance attached to the release.
 
-[Download developer preview 0.1.0 build 5](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.5/HarkinianPad-0.1.0-preview.5-unsigned.ipa).
-[Download its checksum](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.5/HarkinianPad-0.1.0-preview.5-unsigned.ipa.sha256).
+[Download developer preview 0.1.0 build 6](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.6/HarkinianPad-0.1.0-preview.6-unsigned.ipa).
+[Download its checksum](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.6/HarkinianPad-0.1.0-preview.6-unsigned.ipa.sha256).
 The IPA SHA-256 is
-`f505c0837a984f881d158ef3524f53d476a778e6351afabff49b611bbf47cef2`.
+`e24b948b8e40d76132c89016c8c9546a5b7486ad790365e7cb8cfc61777b3c17`.
 
 The audit rejects Simulator products, stale signing material, original ROMs,
 ROM-derived `oot*.o2r`/`.otr` files, and prohibited game data. For a local
@@ -270,7 +268,7 @@ privacy manifest; that remains an official-store distribution gate.
 <details>
 <summary><strong>Where is the IPA?</strong></summary>
 
-[Download the unsigned developer-preview IPA from GitHub Releases](https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.5).
+[Download the unsigned developer-preview IPA from GitHub Releases](https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.6).
 It is not an App Store, TestFlight, or AltStore PAL build. A Mac or Windows PC
 running AltServer is required to sign it with your own Apple ID through
 [AltStore Classic](docs/INSTALL_IPA.md). There is currently no supported
@@ -375,6 +373,5 @@ This project builds on Ship of Harkinian, libultraship, ZAPDTR, OTRExporter,
 the Ocarina of Time decompilation project, SDL, and their contributors. All
 projects, copyrights, and trademarks belong to their respective owners.
 
-The mod-pack development follow-up adds Files import and per-pack controls; see
-[pack formats, creator links and tested limits](docs/MOD_SUPPORT.md). These changes
-are not included in public Preview 5.
+Preview 6 adds Files import and per-pack controls; see
+[pack formats, creator links and tested limits](docs/MOD_SUPPORT.md).

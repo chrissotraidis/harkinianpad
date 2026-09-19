@@ -5,9 +5,9 @@ base, Shipwright `da4e6dc3321bda48a313b162261156580bc376f4`. These are source
 findings, not physical-device compatibility endorsements. No packs, ROMs or
 third-party art are redistributed here.
 
-## Pack import in the development branch
+## Pack import in Preview 6
 
-These controls are merged into main for build 6, **not public Preview 5**.
+These controls ship in [Preview 6](https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.6), app version 0.1.0 build 6.
 
 1. Download a **Ship of Harkinian** pack from its creator. Choose `.o2r`, `.otr`,
    or a ZIP containing those files. Extract `.7z` on a computer or with a trusted

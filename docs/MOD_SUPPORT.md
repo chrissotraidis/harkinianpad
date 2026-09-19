@@ -35,8 +35,11 @@ Imports use new `Documents/mods/Import-…` folders and never overwrite an exist
 pack. Each selected ZIP/file succeeds or rolls back independently; a multi-file
 selection reports partial failures. A staged directory becomes visible only
 after successful copy and archive validation. Imported packages are capped at
-16 GiB of pack payload per selected file or ZIP and 100,000 ZIP entries. Symlink discovery
-is excluded. Archive validation checks container structure, not whether a pack's
+16 GiB of pack payload per selected file or ZIP and 100,000 archive entries;
+individual resources are capped at 256 MiB. OTRs must contain the readable
+internal file list required by this runtime. Symlink discovery
+is excluded. The same preflight runs before loading manually copied packs. Validation checks
+container structure, not whether a pack's
 resources are correct for this runtime. Keep backups of packs you edit in Files.
 
 No pack, ROM, save or third-party artwork is bundled with HarkinianPad. No upload

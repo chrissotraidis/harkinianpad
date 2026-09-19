@@ -76,13 +76,26 @@ int main(int argc, char** argv) {
 #ifdef INCLUDE_MPQ_SUPPORT
     HANDLE archive = nullptr, file = nullptr;
     const auto otr = root / "synthetic.otr";
-    assert(SFileCreateArchive(otr.c_str(), MPQ_CREATE_ARCHIVE_V2, 32, &archive));
+    assert(SFileCreateArchive(otr.c_str(), MPQ_CREATE_ARCHIVE_V2 | MPQ_CREATE_LISTFILE, 32, &archive));
     assert(SFileCreateFile(archive, "alt/test", 0, 4, 0, 0, &file));
     assert(SFileWriteFile(file, "test", 4, 0));
     assert(SFileFinishFile(file));
     assert(SFileCloseArchive(archive));
     assert(ModPackImport::Import(otr, root / "otr") == 1);
     assert(Read(otr) == Read(root / "otr/synthetic.otr"));
+    const auto noList = root / "no-list.otr";
+    SFILE_CREATE_MPQ create = {};
+    create.cbSize = sizeof(create);
+    create.dwMpqVersion = MPQ_FORMAT_VERSION_2;
+    create.dwSectorSize = 4096;
+    create.dwMaxFileCount = 32;
+    assert(SFileCreateArchive2(noList.c_str(), &create, &archive));
+    assert(SFileCreateFile(archive, "alt/test", 0, 4, 0, 0, &file));
+    assert(SFileWriteFile(file, "test", 4, 0));
+    assert(SFileFinishFile(file));
+    assert(SFileCloseArchive(archive));
+    Reject([&] { ModPackImport::Import(noList, root / "no-list"); });
+    assert(!fs::exists(root / "no-list"));
     std::ofstream(root / "bad.otr") << "broken";
     Reject([&] { ModPackImport::Import(root / "bad.otr", root / "invalid-otr"); });
     std::cout << "OTR validation and import passed\n";

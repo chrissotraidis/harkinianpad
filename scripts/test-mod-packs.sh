@@ -19,4 +19,5 @@ fi
     "$ROOT/tests/mod_packs_test.cpp" \
     "$ROOT/sources/Shipwright/soh/soh/Enhancements/ModPackImport.cpp" \
     "${ZIP_LIBS[@]}" ${MPQ_LIBS[@]+"${MPQ_LIBS[@]}"} -o "$TEST_DIR/mod_packs_test"
+if [ "$#" -eq 1 ]; then set -- "$1" "$TEST_DIR/real-pack"; fi
 "$TEST_DIR/mod_packs_test" "$TEST_DIR" "$@"

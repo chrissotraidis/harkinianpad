@@ -89,6 +89,14 @@ These are recurring recommendations, not a measured ranking of all players.
 | Cel shading | [roborich's source/build release](https://github.com/roborich/Shipwright/releases/tag/9.2.3-celshade0.5), [community interest](https://www.reddit.com/r/shipofharkinian/comments/1ul0twp/a_great_way_to_play_oot/) | A renderer/code fork, not merely a texture archive. Compare its actual changes and Metal path in a later branch; do not upgrade this migration's upstream. |
 | Other expansion / ROM hacks | [community discussion](https://www.reddit.com/r/shipofharkinian/comments/1w8rgmx/howcome_were_not_seeing_expansion_mods/) | Establish native source/runtime support individually. A ROM hack advertised for N64 emulators is not evidence of SoH compatibility. |
 
+Djipi's creator specifies SoH 9.0.0 or later (this port remains on 9.2.3) and
+says Master Quest is not ready. For a custom Link model, disable the pack named
+`02 Link's Textures (Delete if using a custom player model)` instead of deleting
+it. The creator also identifies **Fix Out of Bounds Textures** and custom Link
+cosmetics as possible crash triggers. These controls exist in this pin; follow
+the [creator's current instructions](https://gamebanana.com/mods/477979) and test
+one change at a time. Import never changes those settings automatically.
+
 The current Reloaded [v11.0.0 release](https://github.com/GhostlyDark/OoT-Reloaded/releases/tag/v11.0.0)
 contains a SoH HD O2R package (`oot-reloaded-v11.0.0-soh-o2r-hd.7z`,
 626,160,013 compressed bytes). Its GLideN64 and rt64 variants are different

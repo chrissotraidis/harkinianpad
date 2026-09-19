@@ -242,11 +242,16 @@ To create the unsigned, re-signable developer-preview package, run:
 scripts/package-ios.sh
 ```
 
-The default preview identity is HarkinianPad `0.1.0`, build `5`, with bundle
+The default preview identity is HarkinianPad `0.1.0`, build `6`, with bundle
 identifier `com.chrissotraidis.harkinianpad`. The package is named
-`HarkinianPad-0.1.0-preview.5-unsigned.ipa`. It contains no maintainer
+`HarkinianPad-0.1.0-preview.6-unsigned.ipa`. It contains no maintainer
 certificate or provisioning profile; a sideload tool such as AltStore Classic
 must re-sign it for the installer's device.
+
+[Build 6 CI artifact](https://github.com/chrissotraidis/harkinianpad/actions/runs/35446762872/artifacts/10586107486)
+contains the audited iOS/iPadOS 14+ IPA and checksum from main commit
+`96eb768`. GitHub Actions downloads require sign-in and are retained for 30 days.
+The published Preview 5 release remains available below.
 
 [Download developer preview 0.1.0 build 5](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.5/HarkinianPad-0.1.0-preview.5-unsigned.ipa).
 [Download its checksum](https://github.com/chrissotraidis/harkinianpad/releases/download/v0.1.0-preview.5/HarkinianPad-0.1.0-preview.5-unsigned.ipa.sha256).

@@ -103,14 +103,14 @@ Shipwright source version. The defaults are:
 | Field | Value |
 |---|---|
 | App version | `0.1.0` |
-| Build number | `5` |
+| Build number | `6` |
 | Bundle identifier | `com.chrissotraidis.harkinianpad` |
 
 For a later preview, increment the build number without changing the app
 version:
 
 ```sh
-HARKINIANPAD_BUILD_NUMBER=5 scripts/build-ios.sh --device
+HARKINIANPAD_BUILD_NUMBER=7 scripts/build-ios.sh --device
 ```
 
 Use `HARKINIANPAD_VERSION` only for a deliberate app-version change. It must
@@ -160,7 +160,7 @@ scripts/package-ios.sh
 ```
 
 The default output is
-`artifacts/HarkinianPad-0.1.0-preview.5-unsigned.ipa`. It is deliberately
+`artifacts/HarkinianPad-0.1.0-preview.6-unsigned.ipa`. It is deliberately
 unsigned so AltStore Classic or another compatible personal-signing tool can
 re-sign it for the installer's device.
 

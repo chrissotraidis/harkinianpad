@@ -8,6 +8,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/sources/Shipwright"
+"$ROOT/scripts/verify-sources.py" >/dev/null
 BUILD_DIR="$ROOT/build-host-soh"
 ARCHIVE="$BUILD_DIR/soh/soh.o2r"
 

@@ -14,6 +14,14 @@ if ! git -C "$SHIPWRIGHT" rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
     exit 1
 fi
 
+# A reverse patch check alone accepts unrelated modifications in patched files.
+# Accept only an exact prepared tree or an entirely pristine locked baseline.
+if "$ROOT/scripts/verify-sources.py" >/dev/null 2>&1; then
+    echo "Verified existing prepared sources; no files changed."
+    exit 0
+fi
+"$ROOT/scripts/verify-sources.py" --pristine >/dev/null
+
 apply_patch() {
     local tree="$1"
     local patch="$2"
@@ -98,3 +106,5 @@ mkdir -p "$APP_ICON_DESTINATION"
 cp "$APP_ICON_SOURCE/Contents.json" "$APP_ICON_DESTINATION/Contents.json"
 cp "$APP_ICON_SOURCE/AppIcon.png" "$APP_ICON_DESTINATION/AppIcon.png"
 echo "Installed HarkinianPad app icon assets"
+
+"$ROOT/scripts/verify-sources.py"

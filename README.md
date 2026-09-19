@@ -27,8 +27,9 @@ as a native iOS/iPadOS app. It renders through Metal, imports a user-provided
 supported Ocarina of Time ROM through Files, and includes a landscape touch
 controller that can be hidden whenever a physical controller is connected.
 
-This repository contains the mobile integration and reproducible build
-scripts. It does **not** contain Ocarina of Time, a ROM, or a playable
+This repository contains the mobile integration and pinned build scripts.
+The [source-maintenance qualification](docs/MODERNIZATION.md) records the
+remaining source-delivery and reproducibility boundaries. It does **not** contain Ocarina of Time, a ROM, or a playable
 ROM-derived archive. See the scoped
 [`rights and licensing boundary`](RIGHTS_AND_LICENSES.md); it does not
 relicense Shipwright, third-party projects, or game material.

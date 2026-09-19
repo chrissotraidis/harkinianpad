@@ -5,25 +5,42 @@
 #
 # Usage:
 #   scripts/clone-sources.sh            # clone Shipwright + submodules
-#   scripts/clone-sources.sh --latest   # track upstream HEADs instead of pins
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/sources"
 mkdir -p "$SRC"
 
-# These are pinned upstream build inputs. HarkinianPad is the only owned
-# project repository; port changes are tracked in HarkinianPad rather than
-# pushed to forks of these inputs.
-SHIPWRIGHT_REPO="https://github.com/HarbourMasters/Shipwright.git"
-LIBULTRASHIP_REPO="https://github.com/Kenix3/libultraship.git"
-SHIPWRIGHT_PIN="da4e6dc3321bda48a313b162261156580bc376f4"
-LIBULTRASHIP_PIN="2bfbde3a72c119f8073ad762ec6be131dff5df66"
-ZAPDTR_PIN="be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf"
-OTREXPORTER_PIN="c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d"
+# The lock is the single source of truth for upstream identities.
+read_pin() {
+    python3 - "$ROOT/sources.lock.json" "$1" "$2" <<'PYCODE'
+import json, sys
+components = json.load(open(sys.argv[1]))['components']
+print(next(c for c in components if c['name'] == sys.argv[2])[sys.argv[3]])
+PYCODE
+}
+SHIPWRIGHT_REPO="$(read_pin Shipwright url)"
+LIBULTRASHIP_REPO="$(read_pin libultraship url)"
+SHIPWRIGHT_PIN="$(read_pin Shipwright commit)"
+LIBULTRASHIP_PIN="$(read_pin libultraship commit)"
+ZAPDTR_PIN="$(read_pin ZAPDTR commit)"
+OTREXPORTER_PIN="$(read_pin OTRExporter commit)"
 
-LATEST=0
-[ "${1:-}" = "--latest" ] && LATEST=1
+if [ "$#" -ne 0 ]; then
+    echo "Only locked source preparation is supported. Research upstream upgrades in a separate checkout." >&2
+    exit 2
+fi
+
+# Never checkout, update submodules or overwrite a pre-existing prepared tree.
+if [ -e "$SRC/Shipwright" ]; then
+    if "$ROOT/scripts/verify-sources.py" >/dev/null 2>&1; then
+        echo "Verified existing prepared sources; no files changed."
+        exit 0
+    fi
+    "$ROOT/scripts/verify-sources.py" --pristine >/dev/null
+    "$ROOT/scripts/apply-source-patches.sh"
+    exit 0
+fi
 
 if [ ! -d "$SRC/Shipwright/.git" ]; then
     echo "==> Cloning pinned upstream Shipwright source…"
@@ -36,16 +53,9 @@ git remote set-url origin "$SHIPWRIGHT_REPO"
 # `git push` from the disposable checkout.
 git config remote.origin.pushurl "disabled://harkinianpad-upstream-input"
 
-if [ "$LATEST" = "1" ]; then
-    echo "==> Updating to upstream HEAD…"
-    git fetch origin
-    git remote set-head origin --auto
-    git checkout origin/HEAD --detach
-else
-    echo "==> Checking out investigated pin ${SHIPWRIGHT_PIN}…"
-    git fetch origin "$SHIPWRIGHT_PIN"
-    git checkout "$SHIPWRIGHT_PIN" --detach
-fi
+echo "==> Checking out locked Shipwright revision ${SHIPWRIGHT_PIN}…"
+git fetch origin "$SHIPWRIGHT_PIN"
+git checkout "$SHIPWRIGHT_PIN" --detach
 
 # Keep the submodule on Shipwright's exact gitlink while making the upstream
 # input explicit in the local checkout.
@@ -61,19 +71,17 @@ done
 ACTUAL_LIBULTRASHIP_PIN="$(git -C libultraship rev-parse HEAD)"
 ACTUAL_ZAPDTR_PIN="$(git -C ZAPDTR rev-parse HEAD)"
 ACTUAL_OTREXPORTER_PIN="$(git -C OTRExporter rev-parse HEAD)"
-if [ "$LATEST" = "0" ]; then
-    for pin_check in \
-        "libultraship:$ACTUAL_LIBULTRASHIP_PIN:$LIBULTRASHIP_PIN" \
-        "ZAPDTR:$ACTUAL_ZAPDTR_PIN:$ZAPDTR_PIN" \
-        "OTRExporter:$ACTUAL_OTREXPORTER_PIN:$OTREXPORTER_PIN"; do
-        IFS=: read -r input_name actual_pin expected_pin <<< "$pin_check"
-        if [ "$actual_pin" != "$expected_pin" ]; then
-            echo "Unexpected $input_name revision: $actual_pin" >&2
-            echo "Expected: $expected_pin" >&2
-            exit 1
-        fi
-    done
-fi
+for pin_check in \
+    "libultraship:$ACTUAL_LIBULTRASHIP_PIN:$LIBULTRASHIP_PIN" \
+    "ZAPDTR:$ACTUAL_ZAPDTR_PIN:$ZAPDTR_PIN" \
+    "OTRExporter:$ACTUAL_OTREXPORTER_PIN:$OTREXPORTER_PIN"; do
+    IFS=: read -r input_name actual_pin expected_pin <<< "$pin_check"
+    if [ "$actual_pin" != "$expected_pin" ]; then
+        echo "Unexpected $input_name revision: $actual_pin" >&2
+        echo "Expected: $expected_pin" >&2
+        exit 1
+    fi
+done
 
 "$ROOT/scripts/apply-source-patches.sh"
 

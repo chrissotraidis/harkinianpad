@@ -80,7 +80,8 @@ preservation and inspection. `--latest` is no longer a normal-build option.
 Build diagnostics now report UTC stage starts, elapsed time, failure stage and
 exact source/prepared-tree identities. Products have a
 `HarkinianPad.build.json` sidecar (packaged as `BUILD_PROVENANCE.json`) with wrapper revision/dirty state, Xcode/CMake/SDK,
-app version, executable and port-archive hashes. Packaging rejects a stale or
+app version, executable and port-archive hashes, plus resolved Git dependency
+commits and tracked-diff hashes. Packaging rejects a stale or
 missing report. This is build provenance, not complete dependency source delivery
 or bit-for-bit reproducibility. Signed development bundles are not modified after
 signing; the report remains outside the app payload. Existing runtime logs

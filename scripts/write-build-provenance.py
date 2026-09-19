@@ -40,6 +40,17 @@ def main():
     report['executable_sha256'] = sha(app / info['CFBundleExecutable'])
     report['port_archive_sha256'] = sha(app / 'soh.o2r')
     report['source_lock_sha256'] = sha(ROOT / 'sources.lock.json')
+    report['resolved_git_dependencies'] = []
+    for dependency in sorted((app.parents[2] / '_deps').glob('*-src')):
+        if not (dependency / '.git').exists():
+            continue
+        diff = subprocess.check_output(['git', '-C', str(dependency), 'diff', 'HEAD', '--binary'])
+        report['resolved_git_dependencies'].append({
+            'name': dependency.name,
+            'commit': command('git', '-C', str(dependency), 'rev-parse', 'HEAD'),
+            'tracked_diff_sha256': hashlib.sha256(diff).hexdigest(),
+            'dirty': bool(command('git', '-C', str(dependency), 'status', '--porcelain')),
+        })
     report['qualification'] = 'Build identity only; complete offline source delivery and redistribution qualification pending.'
     if args.check:
         try:

@@ -160,8 +160,11 @@ verifying identity compatibility. Do not uninstall to bypass a mismatch.
   compatible Xcode selected with `DEVELOPER_DIR` to qualify that shipping floor.
   An explicit `DEPLOYMENT_TARGET=15.0` build is only additional compile evidence.
 
-Maintained-source integration is under review in PR #23, not merged. Complete
-offline release-source qualification and any new binary remain uncompleted.
+Maintained-source PR #23 and mod-support PR #24 were merged into main on
+19 September 2026. Build 6 retains the same upstream version and adds native
+pack import and persistent selection. Complete offline release-source
+qualification remains outstanding; public download identity is recorded in the
+README and release notes, separately from CI build artifacts.
 [Mod support research](MOD_SUPPORT.md) records source-level compatibility,
 community demand and the concrete follow-up work; no OoTR interoperability or
 new hardware gameplay acceptance is claimed.

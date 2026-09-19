@@ -7,7 +7,7 @@ third-party art are redistributed here.
 
 ## Pack import in the development branch
 
-These controls are part of the mod-pack follow-up, **not public Preview 5**.
+These controls are merged into main for build 6, **not public Preview 5**.
 
 1. Download a **Ship of Harkinian** pack from its creator. Choose `.o2r`, `.otr`,
    or a ZIP containing those files. Extract `.7z` on a computer or with a trusted
@@ -127,6 +127,13 @@ ROM-free iPad Simulator harness exercised the production UIKit presenter,
 cancellation delegate, multi-file import with partial failure, and one-shot menu
 notification. It did not automate a person selecting Files entries or the game's
 ImGui controls. Device and Simulator compilation are recorded with the PR.
+
+Separate full-app Simulator runs with privately extracted supported game data
+reached the rendered title sequence with Reloaded, Djipi (37 archives), and
+Darunia's Joy enabled individually. Runtime counts matched the selected packs;
+all 39 installed packs stayed disabled after a restart with an empty selection.
+Selection was configured by the test, not by automated touch-menu interaction.
+This establishes startup/loading only, not gameplay or music-playback correctness.
 
 The remaining acceptance step is in-game enable/disable/order testing and memory,
 loading, scene-transition and Metal rendering checks on iPad/iPhone. Reloaded's

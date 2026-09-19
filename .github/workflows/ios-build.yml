@@ -61,6 +61,9 @@ jobs:
       - name: Run controller lifecycle regression
         run: scripts/test-controller-reconnect.sh
 
+      - name: Test maintained dependency preservation
+        run: python3 -m unittest discover -s tests -p '*_test.py'
+
       - name: Reproduce unsigned arm64 iPhoneOS app
         run: scripts/build-ios.sh --device
 

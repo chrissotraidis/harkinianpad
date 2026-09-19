@@ -74,11 +74,11 @@ Source locations are relative to the Shipwright submodule:
    automatically adds newly found packs; the disabled column is commented out.
    A stable relative-path identity and persistent per-pack enable state are
    needed before calling this a dependable manager.
-2. The menu says top entries override lower ones, while `UpdateModFiles` loads
-   forward and `ArchiveManager::AddArchive` replaces each resource mapping with
-   the latest archive. Verify and reconcile this with two synthetic overlapping
-   resources, then preserve/migrate saved order explicitly. Do not silently
-   reverse existing users' order during source maintenance.
+2. Ordering was traced through both loader and drawing code: `UpdateModFiles`
+   loads forward, later archives win, and `DrawMods` displays the vector in
+   reverse. Therefore the top visible pack correctly has highest priority.
+   Preserve this behavior; synthetic overlap tests should protect it when
+   repairing pack identity and enable state. No order reversal is needed.
 3. `Context::ParseSpoiler` changes context while parsing and catches failures
    afterward. Validate a bounded complete document before mutation, reject
    unknown identifiers and report useful errors without seed/spoiler contents.
@@ -92,10 +92,16 @@ Source locations are relative to the Shipwright submodule:
    count and effective order without absolute container paths, save contents or
    spoiler data. Export only after a user request; no background upload.
 
+The cel-shading fork has a concrete Metal implementation: its selected
+[libultraship commit](https://github.com/roborich/libultraship/commit/79a2d153f49ff515d70401c607b4a4998564e218)
+changes `gfx_metal.cpp`, `gfx_metal_shader.cpp` and `default.shader.metal`,
+alongside D3D/OpenGL. That improves feasibility; it does not establish iOS
+compatibility or justify upgrading this maintenance branch.
+
 ## Bounded implementation order after maintenance
 
 First harden SoH seed validation and add native import. Then repair the existing
-Mod Menu's identity, disable and order behavior with migration tests. Qualify one
+Mod Menu's identity and disable behavior with migration tests that preserve its existing order. Qualify one
 small synthetic pack followed by exact Reloaded/Djipi releases on hardware,
 recording startup separately from gameplay. Keep saved games/settings intact;
 removing a test pack is sufficient rollback. Next investigate the restricted

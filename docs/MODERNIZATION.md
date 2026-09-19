@@ -47,8 +47,8 @@ ancestry in genuine GitHub-connected forks. Shared default branches are unchange
 
 | Component | Selected commit | Old preparation mapping |
 |---|---|---|
-| [Shipwright](https://github.com/chrissotraidis/Shipwright/tree/codex/harkinianpad-ios) | `79b0907efc2d5631effb35dea88192ee5fc4395d` | Seven Shipwright patches plus icon overlay become parity commit `be876f2c607ff3c96b08af05ba64ab912ca61e8d`; `f93801b` updates nested gitlinks/URLs; `79b0907` adds bounded mod-load logging |
-| [libultraship](https://github.com/chrissotraidis/libultraship/tree/codex/harkinianpad-ios) | `535f82618996eed61efdc9298548bdb9a6270e09` | `libultraship-ios.patch` |
+| [Shipwright](https://github.com/chrissotraidis/Shipwright/tree/codex/harkinianpad-ios) | `f46021a168be3c6e5de00e395d7ab3c2a8112482` | Seven Shipwright patches plus icon overlay become parity commit `be876f2c607ff3c96b08af05ba64ab912ca61e8d`; `f93801b` updates nested gitlinks/URLs; `79b0907` adds bounded mod-load logging; `f46021a` pins the dependency preservation guard |
+| [libultraship](https://github.com/chrissotraidis/libultraship/tree/codex/harkinianpad-ios) | `7b0823020c9772c4d87291e221dd54b302b78bf6` | `535f826` imports `libultraship-ios.patch`; `7b08230` removes the dependency reset fallback |
 | [ZAPDTR](https://github.com/chrissotraidis/ZAPDTR/tree/codex/harkinianpad-ios) | `150d38a6569fa6c7a26cf1c7203e23f82ae19fec` | `zapdtr-ios.patch` |
 | OTRExporter | `c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d` | Unmodified upstream |
 
@@ -66,7 +66,10 @@ no upstream maintainer was contacted.
 Ordinary builds now consume immutable submodules and do not rewrite source.
 Historical patches remain in `patches/` for comparison and rollback only.
 libultraship's ImGui/StormLib package patches remain dependency exceptions owned
-by its build integration: existing host/device builds exercise them, resolved
+by its build integration: two fixture tests exercise clean/idempotent patching
+and preservation of tracked/untracked edits on failure. The old helper fails
+the preservation regression; its `git reset --hard` fallback is removed. Existing
+host/device builds exercise the actual package patches, and resolved
 commits and diff hashes are in provenance. The graph still has tag-based
 fetches and host package inputs. Full offline dependency/relink delivery and a
 new binary release remain outside the completed source-maintenance claim.
@@ -133,7 +136,7 @@ verifying identity compatibility. Do not uninstall to bypass a mismatch.
 
 ## Evidence recorded in this task
 
-- Twelve source/provenance regression cases pass, including maintained parent
+- Fourteen source/provenance/dependency regression cases pass, including maintained parent
   gitlink/URL disagreement and source drift. Legacy comparison cases cover: valid pristine/prepared states, an extra
   edit inside a patched file, an extra file, changed executable mode, wrong pin,
   and missing source. Existing controller-slot regression and repository safety

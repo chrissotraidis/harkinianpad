@@ -25,7 +25,7 @@ retrieved IPA SHA-256 is
 It has no corresponding-source asset; the release body does not provide a
 separate complete source bundle. This is an evidence gap, not a compliance verdict.
 
-The production method is central patch/preparation. All nine patches are active;
+The starting production method was central patch/preparation. All nine patches were active;
 `shipwright-ios-native-hud-touch-experiment.patch` is layered into production,
 so its filename alone does not establish an unshipped feature. The copied app
 icon is another preparation input. Device and ARM64 Simulator builds use the
@@ -39,43 +39,54 @@ published HarkinianPad platform. Android/tvOS are not shipping targets here.
 | [ZAPDTR](https://github.com/HarbourMasters/ZAPDTR) | `be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf` | Extraction/archive tools; root MIT notice |
 | [OTRExporter](https://github.com/HarbourMasters/OTRExporter) | `c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d` | Unmodified archive exporter |
 
-The existing `chrissotraidis/libultraship` repository is a GitHub-connected fork
-of `Kenix3/libultraship` (live API verified). It can host a dedicated HarkinianPad
-branch later without moving another app's pin or the fork's default branch.
-No new public dependency history is published by this qualification.
+## Maintained source and rights scope
 
-## Required source-delivery decision
+Dedicated `codex/harkinianpad-ios` branches now retain the original upstream
+ancestry in genuine GitHub-connected forks. Shared default branches are unchanged.
+`sources.lock.json` and the root/nested gitlinks select exact commits:
 
-The selected Shipwright tree lacks a top-level license. Its
-[modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
-describes forks and distributing builds, but does not define a blanket grant
-covering every game-derived source file and asset. HarkinianPad also reserves
-rights to its integration code. Existing public availability and general task
-authorization do not resolve that recorded uncertainty. Establish the permitted
-scope for maintained Shipwright source/history and source-archive distribution
-before publishing that migration. Do not infer that only commercial uses need
-clarification. No upstream contact or license change was made.
+| Component | Selected commit | Old preparation mapping |
+|---|---|---|
+| [Shipwright](https://github.com/chrissotraidis/Shipwright/tree/codex/harkinianpad-ios) | `f93801ba0243656116a2cc9cd9bf4c3b9c013570` | Seven Shipwright patches plus icon overlay become parity commit `be876f2c607ff3c96b08af05ba64ab912ca61e8d`; selected commit only updates nested gitlinks/URLs |
+| [libultraship](https://github.com/chrissotraidis/libultraship/tree/codex/harkinianpad-ios) | `535f82618996eed61efdc9298548bdb9a6270e09` | `libultraship-ios.patch` |
+| [ZAPDTR](https://github.com/chrissotraidis/ZAPDTR/tree/codex/harkinianpad-ios) | `150d38a6569fa6c7a26cf1c7203e23f82ae19fec` | `zapdtr-ios.patch` |
+| OTRExporter | `c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d` | Unmodified upstream |
 
-libultraship also prepares ImGui and StormLib using dependency-package patches.
-Its CMake dependency graph includes tag-based downloads and host package-manager
-inputs. Merely committing the three main prepared trees would not establish a
-complete, offline reproducible release. These smaller dependency exceptions need
-exact resolved identities, unchanged-output checks, notices and source/relink
-qualification where applicable before a release-completeness claim.
+GitHub API verified parents: HarbourMasters/Shipwright, Kenix3/libultraship and
+HarbourMasters/ZAPDTR. Fork metadata establishes ancestry, not licensing.
+The pinned [upstream modding guide](https://github.com/HarbourMasters/Shipwright/blob/da4e6dc3321bda48a313b162261156580bc376f4/docs/MODDING.md)
+explicitly instructs users to create GitHub forks, commit changes, push branches
+and share builds. That is the affirmative project guidance for this narrowly
+scoped GitHub-hosted maintenance workflow. The earlier blanket hold on all
+source maintenance was too broad and is superseded by this assessment.
+It does not create a blanket license for mixed game-derived material or resolve
+broader source-archive/commercial/store distribution. No terms were changed and
+no upstream maintainer was contacted.
 
-Production patches are deliberately retained while this gate remains open.
-The source verifier is a preservation guard, not a completed migration.
+Ordinary builds now consume immutable submodules and do not rewrite source.
+Historical patches remain in `patches/` for comparison and rollback only.
+libultraship's ImGui/StormLib package patches remain dependency exceptions owned
+by its build integration: existing host/device builds exercise them, resolved
+commits and diff hashes are in provenance. The graph still has tag-based
+fetches and host package inputs. Full offline dependency/relink delivery and a
+new binary release remain outside the completed source-maintenance claim.
+
+### Updating source
+
+Create a component branch from its selected commit, make ordinary source changes,
+retain notices, and test the affected platform. Push to the existing fork, then
+update its parent gitlink and `sources.lock.json` in a reviewable wrapper PR.
+Compare against `upstream_commit` with `git diff` / `git log`; do not reset to a
+new upstream tip or change another product's shared branch. An upstream upgrade
+is a separate change with its own acceptance evidence.
 
 ## Verification and diagnostics
 
-`sources.lock.json` records the four upstream pins, ordered patch layers and
-icon overlay. `scripts/verify-sources.py` reconstructs their expected Git index
-in temporary storage, then compares every source file's content and mode.
-It rejects wrong revisions, missing files, extra unignored files and extra edits
-even inside a correctly patched file. It never resets an input checkout.
-`clone-sources.sh` and the patch driver accept an exact prepared tree unchanged,
-or prepare an entirely pristine pinned tree. Partial/unknown states stop for
-preservation and inspection. `--latest` is no longer a normal-build option.
+`sources.lock.json` records maintained commits and their original upstream bases.
+`scripts/verify-sources.py` checks parent gitlinks, complete source content and
+modes. Wrong pins, missing files and unknown edits stop the build without reset.
+Bootstrap initializes missing submodules; an existing mismatched checkout is
+preserved for inspection. The old patch entry point only verifies sources.
 
 Build diagnostics now report UTC stage starts, elapsed time, failure stage and
 exact source/prepared-tree identities. Products have a
@@ -112,8 +123,7 @@ git worktree add --detach /tmp/harkinianpad-rollback c5963066e888d45e71c16cb63bb
 Run the baseline build procedure there using separately preserved sources, never
 resetting the active working source. Private prepared-source commits were also
 reversed and reapplied in disposable component checkouts; the resulting Git tree
-must equal the original base and prepared identities respectively. A future
-maintained-source migration should preserve that same comparison.
+must equal the original base and prepared identities respectively. The maintained parity commits preserve that comparison.
 
 No device was installed, uninstalled or reset by this task. Reinstalling an old
 IPA requires the owner's existing signing identity, entitlements and bundle ID;
@@ -145,6 +155,8 @@ verifying identity compatibility. Do not uninstall to bypass a mismatch.
   compatible Xcode selected with `DEVELOPER_DIR` to qualify that shipping floor.
   An explicit `DEPLOYMENT_TARGET=15.0` build is only additional compile evidence.
 
-Full migration, new runtime instrumentation, complete offline release-source
-qualification and a new release remain uncompleted. Mod-format compatibility and
-community research follow modernization; no OoTR website compatibility is claimed.
+Maintained-source integration is under review in PR #23, not merged. Complete
+offline release-source qualification and any new binary remain uncompleted.
+[Mod support research](MOD_SUPPORT.md) records source-level compatibility,
+community demand and the concrete follow-up work; no OoTR interoperability or
+new hardware gameplay acceptance is claimed.

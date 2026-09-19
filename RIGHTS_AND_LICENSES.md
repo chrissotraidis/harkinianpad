@@ -18,8 +18,8 @@ The pinned Shipwright tree has no top-level license. Shipwright's official
 documents public forks, modifications, and distributable builds.
 HarkinianPad's free, unsigned developer-preview IPA follows that documented
 community-modding model. This is not a formal open-source license grant, and
-the permitted scope of maintained source/history and complete source-archive
-distribution remains an open qualification question. Paid access, commercial
+the GitHub-hosted maintenance workflow follows those explicit upstream fork
+instructions. Broader complete source-archive distribution remains unqualified. Paid access, commercial
 binary licensing and official-store distribution also require clarification.
 See [source-maintenance qualification](docs/MODERNIZATION.md).
 

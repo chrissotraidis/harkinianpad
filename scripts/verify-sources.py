@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify complete prepared source against pinned Git objects and ordered patches."""
+"""Verify complete source against immutable Git objects; legacy fixtures retain patch comparison."""
 import argparse
 import hashlib
 import json
@@ -18,6 +18,16 @@ def git(tree, *args, **kwargs):
 def verify(root=ROOT, pristine=False):
     lock = json.loads((root / 'sources.lock.json').read_text())
     identities = []
+    if lock.get('schema', 1) >= 2:
+        # Check every declared gitlink, including the wrapper's root submodule.
+        for component in lock['components']:
+            parents = [c for c in lock['components'] if component['path'].startswith(c['path'] + '/')]
+            parent = max(parents, key=lambda c: len(c['path'])) if parents else None
+            parent_tree = root / parent['path'] if parent else root
+            relative = component['path'][len(parent['path']) + 1:] if parent else component['path']
+            entry = git(parent_tree, 'ls-tree', 'HEAD', '--', relative).decode().strip()
+            if not entry or entry.split()[0:3] != ['160000', 'commit', component['commit']]:
+                raise ValueError(f"{component['name']}: parent gitlink disagrees with lock")
     for component in lock['components']:
         tree = root / component['path']
         head = git(tree, 'rev-parse', 'HEAD').decode().strip()
@@ -67,9 +77,9 @@ def verify(root=ROOT, pristine=False):
             if extra:
                 raise ValueError(f"{component['name']}: unexpected source files: {', '.join(sorted(extra))}")
             identities.append({'name': component['name'], 'upstream': component['url'],
-                               'base_commit': head, 'prepared_tree': git(expected, 'write-tree').decode().strip(),
+                               'base_commit': component.get('upstream_commit', head), 'commit': head, 'prepared_tree': git(expected, 'write-tree').decode().strip(),
                                'files': len(expected_files)})
-    return {'schema': 1, 'profile': 'pristine' if pristine else 'preview5-prepared', 'components': identities}
+    return {'schema': 1, 'profile': 'pristine' if pristine else ('maintained' if lock.get('schema', 1) >= 2 else 'preview5-prepared'), 'components': identities}
 
 
 if __name__ == '__main__':

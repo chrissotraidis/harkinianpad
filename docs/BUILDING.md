@@ -1,9 +1,9 @@
 # Building HarkinianPad for iOS and iPadOS
 
 These instructions build only `chrissotraidis/harkinianpad`. Shipwright,
-libultraship, ZAPDTR, and OTRExporter are pinned, disposable upstream source
-inputs. The [modernization record](MODERNIZATION.md) documents the pending
-maintained-source and redistribution qualification.
+libultraship, ZAPDTR, and OTRExporter are immutable submodule inputs. Modified
+components retain upstream ancestry in dedicated maintained branches. The
+[modernization record](MODERNIZATION.md) records pins, parity and remaining release qualification.
 
 ## Requirements
 
@@ -42,8 +42,7 @@ scripts/build-ios.sh --simulator
 ```
 
 The ROM is deliberately not a compile input. The wrapper fetches and verifies
-every pinned source revision, disables upstream push URLs, applies the tracked
-patches, generates the ROM-free port archive, and builds the complete app.
+every maintained submodule revision without replaying patches, generates the ROM-free port archive, and builds the complete app.
 Keeping the ROM in `ref/` makes it available for later local import while
 proving that it cannot leak into source control or the built product.
 

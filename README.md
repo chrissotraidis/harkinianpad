@@ -13,6 +13,7 @@
   <img alt="Physical iPad tested" src="https://img.shields.io/badge/physical%20iPad-tested-30D158">
   <a href="https://github.com/chrissotraidis/harkinianpad/releases/tag/v0.1.0-preview.6"><img alt="Download developer preview IPA" src="https://img.shields.io/badge/IPA-developer%20preview-FF9F0A"></a>
   <img alt="ROM not included" src="https://img.shields.io/badge/game%20data-not%20included-FF453A">
+  <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the Discord community" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
 ![HarkinianPad running Ocarina of Time on iPad with customizable touch controls](docs/readme/harkinianpad-gameplay.jpg)
@@ -42,10 +43,12 @@ relicense Shipwright, third-party projects, or game material.
 | Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
 | App Store / TestFlight | **Not announced** | No listing or public TestFlight currently exists. |
 
-The current development build has been signed, installed, and played on a
+Earlier development builds have been signed, installed, and played on a
 12.9-inch iPad Pro (6th generation) running iPadOS 26.5.2. Files import,
 on-device archive loading, touch gameplay, save loading, the settings menu,
 and in-place app updates have all been exercised on that hardware.
+Preview 6's mod-pack changes have Simulator startup validation; physical-device
+gameplay has not yet been verified for that release.
 
 Audio has been heard during repeated physical-iPad playtests. Headphone,
 Bluetooth, and interruption recovery still need a complete device matrix.
@@ -351,6 +354,8 @@ Build directories, artifacts, ROMs, and ROM-derived
 archives are ignored and must never be committed.
 
 ## Contributing and support
+
+[Join the Discord community](https://discord.gg/xwHfUD2bxW) for questions and discussion.
 
 Use the structured
 [bug report](https://github.com/chrissotraidis/harkinianpad/issues/new/choose)

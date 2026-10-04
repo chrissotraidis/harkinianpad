@@ -271,9 +271,9 @@ To create the unsigned, re-signable developer-preview package, run:
 scripts/package-ios.sh
 ```
 
-The current defaults in `version.json` are HarkinianPad `0.2.0`, build `7`,
+The current defaults in `version.json` are HarkinianPad `0.2.1`, build `8`,
 with bundle identifier `com.chrissotraidis.harkinianpad`. The package is named
-`HarkinianPad-0.2.0-preview.7-unsigned.ipa`. It contains no maintainer
+`HarkinianPad-0.2.1-preview.8-unsigned.ipa`. It contains no maintainer
 certificate or provisioning profile; a sideload tool such as AltStore Classic
 must re-sign it for the installer's device.
 

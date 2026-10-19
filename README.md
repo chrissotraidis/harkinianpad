@@ -16,8 +16,6 @@
   <a href="https://discord.gg/xwHfUD2bxW"><img alt="Join the Discord community" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&amp;logoColor=white"></a>
 </p>
 
-![HarkinianPad running Ocarina of Time on iPad with customizable touch controls](docs/readme/harkinianpad-gameplay.jpg)
-
 HarkinianPad packages the full
 [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) source port
 as a native iOS/iPadOS app. It renders through Metal, imports a user-provided
@@ -200,27 +198,6 @@ startup/foreground path has executed on the physical iPad. That evidence is
 separate from hands-on controller acceptance: no Bluetooth, wired,
 natural-sleep, full-mapping, or two-controller scenario is claimed as passed
 until it is exercised with that hardware.
-
-## Current screenshots
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/readme/simulator-file-select.jpg" alt="Current HarkinianPad file-select screen in iPad Simulator">
-    </td>
-    <td width="50%">
-      <img src="docs/readme/simulator-settings.jpg" alt="Current HarkinianPad settings interface in iPad Simulator">
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Ready to play</strong><br>Every N64 input is available without a separate controller.</td>
-    <td align="center"><strong>Adjust while running</strong><br>Touch controls can be toggled from Settings → Controls.</td>
-  </tr>
-</table>
-
-The hero image is from the physical iPad build. The two interface captures are
-from the current iPad Simulator build. All game data used for these captures
-was supplied locally and is not part of this repository.
 
 ## What works
 

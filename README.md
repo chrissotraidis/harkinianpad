@@ -386,3 +386,13 @@ projects, copyrights, and trademarks belong to their respective owners.
 
 Preview 6 adds Files import and per-pack controls; see
 [pack formats, creator links and tested limits](docs/MOD_SUPPORT.md).
+
+## Legal
+
+HarkinianPad is an unofficial, fan-made project. It is not affiliated with,
+endorsed by, or sponsored by Nintendo. The Legend of Zelda: Ocarina of Time and
+related names and marks are trademarks of Nintendo (and their respective
+owners). This repository contains no game data, ROMs, or extracted assets. To
+use it, you need your own legally obtained copy of the game, and you build it
+yourself on your own machine. Please don't share game files or builds made from
+them.

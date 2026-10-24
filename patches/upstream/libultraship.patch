@@ -1,0 +1,1312 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 08cc7915cfd19e1b044c81398348924cef670ac2..34c3369d92c4216f4615b8bdc89f9ac6f7d3bba8 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,6 +12,9 @@ option(DISABLE_DLL_LOADER "Disable dynamic library loading support" OFF)
+ option(ENABLE_SCRIPTING "Enable TCC-based C mod compilation and scripting system" OFF)
+ 
+ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
++    if(ENABLE_SCRIPTING)
++        message(FATAL_ERROR "ENABLE_SCRIPTING is unsupported on iOS")
++    endif()
+     option(SIGN_LIBRARY "Enable xcode signing" OFF)
+     option(BUNDLE_ID "Bundle ID for xcode signing" "com.example.libultraship")
+     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+diff --git a/cmake/dependencies/common.cmake b/cmake/dependencies/common.cmake
+index 80dec56ed2e662ee97cd42c642f75d676d10f9b8..d3e72c861282286da386216ed41d8f60855ece17 100644
+--- a/cmake/dependencies/common.cmake
++++ b/cmake/dependencies/common.cmake
+@@ -52,13 +52,26 @@ endif()
+ 
+ #=================== STB ===================
+ set(STB_DIR ${CMAKE_BINARY_DIR}/_deps/stb)
+-file(DOWNLOAD "https://github.com/nothings/stb/raw/0bc88af4de5fb022db643c2d8e549a0927749354/stb_image.h" "${STB_DIR}/stb_image.h")
++set(STB_IMAGE_PATH "${STB_DIR}/stb_image.h")
++set(STB_IMAGE_SHA256
++    c54b15a689e6a1f32c75e2ec23afa442e3e0e37e894b73c1974d08679b20dd5c)
++if(EXISTS "${STB_IMAGE_PATH}")
++    file(SHA256 "${STB_IMAGE_PATH}" STB_IMAGE_EXISTING_SHA256)
++endif()
++if(NOT STB_IMAGE_EXISTING_SHA256 STREQUAL STB_IMAGE_SHA256)
++    file(DOWNLOAD
++        "https://raw.githubusercontent.com/nothings/stb/0bc88af4de5fb022db643c2d8e549a0927749354/stb_image.h"
++        "${STB_IMAGE_PATH}"
++        EXPECTED_HASH SHA256=${STB_IMAGE_SHA256}
++        TLS_VERIFY ON
++    )
++endif()
+ file(WRITE "${STB_DIR}/stb_impl.c" "#define STB_IMAGE_IMPLEMENTATION\n#include \"stb_image.h\"")
+ 
+ add_library(stb STATIC)
+ 
+ target_sources(stb PRIVATE
+-    ${STB_DIR}/stb_image.h
++    ${STB_IMAGE_PATH}
+     ${STB_DIR}/stb_impl.c
+ )
+ 
+@@ -307,4 +320,4 @@ if(NOT TARGET libtcc)
+     endif()
+ endif()
+ 
+-endif() # ENABLE_SCRIPTING
+\ No newline at end of file
++endif() # ENABLE_SCRIPTING
+diff --git a/cmake/dependencies/git-patch.cmake b/cmake/dependencies/git-patch.cmake
+index deb3e35dadd28087d3717abab7ea66e671567958..9219c5fe1440ea61702fcab5cf3c9fa6a2ad7c34 100644
+--- a/cmake/dependencies/git-patch.cmake
++++ b/cmake/dependencies/git-patch.cmake
+@@ -27,35 +27,13 @@ function(patch_if_needed)
+     set(ret ${ret} PARENT_SCOPE)
+ endfunction()
+ 
+-# Resets code and reapply patch, if old (potentially incompatible) patch applied
+-function(patch_if_needed_with_reset)
+-    patch_if_needed()
+-    if(NOT ret EQUAL 0)
+-        message(STATUS "Failed to patch in current state, clearing changes to reapply")
+-        execute_process(
+-            COMMAND git status --porcelain
+-            RESULT_VARIABLE is_changed
+-        )
+-        if(NOT is_changed EQUAL 0)
+-            message(WARNING "Patch inapplyable in clean state")
+-            set(ret 1)
+-        else()
+-            execute_process(COMMAND git reset --hard)
+-            patch_if_needed()
+-        endif()
+-    endif()
+-    set(ret ${ret} PARENT_SCOPE)
+-endfunction()
+-
++# Preserve dependency edits. An incompatible patch needs inspection, never reset.
++# with_reset is accepted for compatibility with existing package declarations.
+ message(STATUS "Trying to apply patch ${patch_file}")
+-if(with_reset)
+-    patch_if_needed_with_reset()
+-else()
+-    patch_if_needed()
+-endif()
++patch_if_needed()
+ 
+ if(NOT ret EQUAL 0)
+-    message(FATAL_ERROR "Failed to apply patch ${patch_file}")
++    message(FATAL_ERROR "Failed to apply patch ${patch_file}; dependency files were preserved. Inspect the checkout before retrying.")
+ else()
+     message(STATUS "Successfully patched with ${patch_file}")
+ endif()
+diff --git a/cmake/ios-toolchain-populate.cmake b/cmake/ios-toolchain-populate.cmake
+index eb93fea4d692293b454d71abf3ed617d112914fb..644bcc26c0555d526a4fef425fce087c9e81e723 100644
+--- a/cmake/ios-toolchain-populate.cmake
++++ b/cmake/ios-toolchain-populate.cmake
+@@ -1,4 +1,6 @@
+-set(PLATFORM "OS64COMBINED")
++if(NOT DEFINED PLATFORM)
++    set(PLATFORM "OS64COMBINED")
++endif()
+ include(FetchContent)
+ FetchContent_Declare(iostoolchain
+     GIT_REPOSITORY https://github.com/leetal/ios-cmake
+@@ -12,4 +14,4 @@ if(NOT iostoolchain_POPULATED)
+ endif()
+ set(CMAKE_IOS_TOOLCHAIN_FILE ${iostoolchain_SOURCE_DIR}/ios.toolchain.cmake)
+ set_property(GLOBAL PROPERTY IOS_TOOLCHAIN_FILE ${CMAKE_IOS_TOOLCHAIN_FILE})
+-include(${CMAKE_IOS_TOOLCHAIN_FILE})
+\ No newline at end of file
++include(${CMAKE_IOS_TOOLCHAIN_FILE})
+diff --git a/include/fast/backends/gfx_sdl.h b/include/fast/backends/gfx_sdl.h
+index 79042f4ed8a7826622aa16d5606c235df5b38c6c..70a353bd7ed9be71f8868a6ae67a176e85657f7b 100644
+--- a/include/fast/backends/gfx_sdl.h
++++ b/include/fast/backends/gfx_sdl.h
+@@ -59,6 +59,9 @@ class GfxWindowBackendSDL2 final : public GfxWindowBackend {
+     int mSdlToLusTable[512];
+     float mMouseWheelX = 0.0f;
+     float mMouseWheelY = 0.0f;
++#ifdef __IOS__
++    bool mIsBackgrounded = false;
++#endif
+ #ifdef __OpenBSD__
+     int mBsdTick; // store kern.clockrate's tick (microseconds) to adjust sleep timing
+ #endif
+diff --git a/include/libultraship/bridge/windowbridge.h b/include/libultraship/bridge/windowbridge.h
+index e1a1f017d73d9a931c47c95aa285611cf3ed88ed..7c60f9039111a3fbcdb9abae6a84a46913e1421c 100644
+--- a/include/libultraship/bridge/windowbridge.h
++++ b/include/libultraship/bridge/windowbridge.h
+@@ -10,6 +10,13 @@ extern "C" {
+ /** @brief Returns true if the application window is running (has not been closed). */
+ API_EXPORT bool WindowIsRunning();
+ 
++/**
++ * @brief Processes window events and returns true when the next game frame may run.
++ *
++ * A false result yields briefly so suspended mobile apps do not spin their game loop.
++ */
++API_EXPORT bool WindowIsFrameReady();
++
+ /** @brief Returns the current width of the game window in pixels. */
+ API_EXPORT uint32_t WindowGetWidth();
+ 
+diff --git a/include/ship/audio/Audio.h b/include/ship/audio/Audio.h
+index 9251309199c89cc332cd55dcf0a40c8c13bfd00d..9e1d69db829e08cebe1e8de03dc73e1b96d4002c 100644
+--- a/include/ship/audio/Audio.h
++++ b/include/ship/audio/Audio.h
+@@ -68,6 +68,9 @@ class Audio {
+      */
+     AudioChannelsSetting GetAudioChannels() const;
+ 
++    /** @brief Pauses or resumes the active audio backend. */
++    void SetPaused(bool paused);
++
+   protected:
+     /** @brief (Re)initialises the AudioPlayer for the current backend and channel settings. */
+     void InitAudioPlayer();
+diff --git a/include/ship/audio/AudioPlayer.h b/include/ship/audio/AudioPlayer.h
+index 2725ec3c0271218e91da20f4b2224b9b69477b83..1cde3ff2b6a8fc970bfcab5361244e424e8d2877 100644
+--- a/include/ship/audio/AudioPlayer.h
++++ b/include/ship/audio/AudioPlayer.h
+@@ -71,6 +71,15 @@ class AudioPlayer {
+     /** @brief Returns true if Init() has been called and succeeded. */
+     bool IsInitialized();
+ 
++    /**
++     * @brief Pauses or resumes output without destroying the audio backend.
++     *
++     * Backends that do not require explicit pause handling may keep the
++     * default no-op implementation.
++     */
++    virtual void SetPaused(bool) {
++    }
++
+     /** @brief Returns the configured output sample rate in Hz. */
+     int32_t GetSampleRate() const;
+ 
+@@ -158,7 +167,7 @@ class AudioPlayer {
+ #include "WasapiAudioPlayer.h"
+ #endif
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+ #include "CoreAudioAudioPlayer.h"
+ #endif
+ 
+diff --git a/include/ship/audio/SDLAudioPlayer.h b/include/ship/audio/SDLAudioPlayer.h
+index ac61dd36ed06bda387b12a316b128491fe2ca789..b440c0593f92edc3bc953542c4924862ec411bac 100644
+--- a/include/ship/audio/SDLAudioPlayer.h
++++ b/include/ship/audio/SDLAudioPlayer.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ #include "AudioPlayer.h"
++#include <atomic>
+ #include <SDL2/SDL.h>
+ 
+ namespace Ship {
+@@ -29,6 +30,9 @@ class SDLAudioPlayer final : public AudioPlayer {
+      */
+     int Buffered() override;
+ 
++    /** @brief Pauses/resumes the SDL device and drops audio queued before a pause. */
++    void SetPaused(bool paused) override;
++
+   protected:
+     /**
+      * @brief Opens the SDL audio device with the configured settings.
+@@ -51,5 +55,6 @@ class SDLAudioPlayer final : public AudioPlayer {
+   private:
+     SDL_AudioDeviceID mDevice = 0; ///< Handle to the opened SDL audio device.
+     int32_t mNumChannels = 2;      ///< Number of output channels (2 for stereo, 6 for 5.1).
++    std::atomic<bool> mPaused = false;
+ };
+ } // namespace Ship
+diff --git a/include/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.h b/include/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.h
+index 33f9a6649b5d3133d000942f236f7cae4aca7cd6..1587889ceaf61f194671b76f3b5dc3ce0cbca047 100644
+--- a/include/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.h
++++ b/include/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.h
+@@ -1,90 +1,48 @@
+ #pragma once
+ 
++#include <cstdint>
++#include <string>
+ #include <unordered_map>
+ #include <unordered_set>
+-#include <vector>
+-#include <string>
+ #include <SDL2/SDL.h>
+ 
++#include "ship/controller/physicaldevice/ControllerSlotAssignments.h"
++
+ namespace Ship {
+ 
+-/**
+- * @brief Tracks connected SDL game controllers and manages per-port ignore lists.
+- *
+- * ConnectedPhysicalDeviceManager maintains a live map of SDL game controllers that
+- * are currently connected to the system. It also supports per-port ignore lists so
+- * that specific controllers can be excluded from a given controller port's input
+- * processing.
+- */
++/** Owns connected SDL2 gamepad handles and their N64 player slots. */
+ class ConnectedPhysicalDeviceManager {
+   public:
+-    /** @brief Constructs the manager and performs an initial scan of connected gamepads. */
+     ConnectedPhysicalDeviceManager();
+     ~ConnectedPhysicalDeviceManager();
+ 
+-    /**
+-     * @brief Returns the connected SDL gamepads available for the given port.
+-     *
+-     * Gamepads on the port's ignore list are excluded from the result.
+-     *
+-     * @param portIndex Zero-based controller port index.
+-     * @return Map of SDL joystick instance ID to SDL_GameController pointer.
+-     */
+     std::unordered_map<int32_t, SDL_GameController*> GetConnectedSDLGamepadsForPort(uint8_t portIndex);
+-
+-    /**
+-     * @brief Returns the display names of all connected SDL gamepads.
+-     * @return Map of SDL joystick instance ID to human-readable gamepad name.
+-     */
+     std::unordered_map<int32_t, std::string> GetConnectedSDLGamepadNames();
+-
+-    /**
+-     * @brief Returns the set of SDL joystick instance IDs ignored for a port.
+-     * @param portIndex Zero-based controller port index.
+-     * @return Set of ignored joystick instance IDs.
+-     */
+     std::unordered_set<int32_t> GetIgnoredInstanceIdsForPort(uint8_t portIndex);
+-
+-    /**
+-     * @brief Checks whether a specific joystick instance is being ignored on a port.
+-     * @param portIndex  Zero-based controller port index.
+-     * @param instanceId SDL joystick instance ID.
+-     * @return true if the instance is ignored for the given port.
+-     */
+     bool PortIsIgnoringInstanceId(uint8_t portIndex, int32_t instanceId);
+-
+-    /**
+-     * @brief Adds a joystick instance to a port's ignore list.
+-     * @param portIndex  Zero-based controller port index.
+-     * @param instanceId SDL joystick instance ID to ignore.
+-     */
+     void IgnoreInstanceIdForPort(uint8_t portIndex, int32_t instanceId);
+-
+-    /**
+-     * @brief Removes a joystick instance from a port's ignore list.
+-     * @param portIndex  Zero-based controller port index.
+-     * @param instanceId SDL joystick instance ID to stop ignoring.
+-     */
+     void UnignoreInstanceIdForPort(uint8_t portIndex, int32_t instanceId);
+ 
+-    /**
+-     * @brief Handles an SDL device-added event by opening the new controller.
+-     * @param sdlDeviceIndex SDL device index from the SDL_CONTROLLERDEVICEADDED event.
+-     */
+     void HandlePhysicalDeviceConnect(int32_t sdlDeviceIndex);
+-
+-    /**
+-     * @brief Handles an SDL device-removed event by closing the controller.
+-     * @param sdlJoystickInstanceId SDL joystick instance ID from the SDL_CONTROLLERDEVICEREMOVED event.
+-     */
+     void HandlePhysicalDeviceDisconnect(int32_t sdlJoystickInstanceId);
+-
+-    /** @brief Re-scans all connected SDL gamepads and rebuilds the internal maps. */
+-    void RefreshConnectedSDLGamepads();
++    void HandlePhysicalDeviceRemap(int32_t sdlJoystickInstanceId);
++    void RefreshConnectedSDLGamepads(const char* reason);
++    bool ReconcileIfNeeded(const char* reason);
+ 
+   private:
+-    std::unordered_map<int32_t, SDL_GameController*> mConnectedSDLGamepads;
+-    std::unordered_map<int32_t, std::string> mConnectedSDLGamepadNames;
+-    std::unordered_map<uint8_t, std::unordered_set<int32_t>> mIgnoredInstanceIds;
++    struct SDLGamepadRecord {
++        SDL_GameController* gamepad = nullptr;
++        std::string name;
++        std::string stableId;
++    };
++
++    std::string BuildStableId(SDL_GameController* gamepad, const char* guid, const std::string& name) const;
++    void CloseGamepad(int32_t instanceId, const SDLGamepadRecord& record, const char* reason);
++
++    std::unordered_map<int32_t, SDLGamepadRecord> mConnectedSDLGamepads;
++    ControllerSlotAssignments mSlotAssignments;
++    Uint64 mLastReconcileTicks = 0;
++    bool mNeedsReconcile = true;
+ };
++
+ } // namespace Ship
+diff --git a/include/ship/controller/physicaldevice/ControllerSlotAssignments.h b/include/ship/controller/physicaldevice/ControllerSlotAssignments.h
+new file mode 100644
+index 0000000000000000000000000000000000000000..22b71c359c7b3844c53d1f8b2051d0b03975f771
+--- /dev/null
++++ b/include/ship/controller/physicaldevice/ControllerSlotAssignments.h
+@@ -0,0 +1,47 @@
++#pragma once
++
++#include <array>
++#include <cstdint>
++#include <optional>
++#include <string>
++#include <unordered_map>
++#include <unordered_set>
++#include <vector>
++
++namespace Ship {
++
++/**
++ * @brief Keeps SDL controller instance IDs in stable N64 player slots.
++ *
++ * SDL instance IDs may change after sleep or reconnect. This helper therefore
++ * preserves an attached instance first, then a matching device identity, and
++ * finally assigns new devices to the first free slot.
++ */
++class ControllerSlotAssignments {
++  public:
++    static constexpr uint8_t SlotCount = 4;
++
++    struct Device {
++        int32_t instanceId;
++        std::string stableId;
++    };
++
++    void Reconcile(const std::vector<Device>& devices);
++    bool Assign(int32_t instanceId, uint8_t slot);
++    bool Unassign(int32_t instanceId, uint8_t slot);
++
++    std::optional<uint8_t> GetSlot(int32_t instanceId) const;
++    std::optional<int32_t> GetInstanceId(uint8_t slot) const;
++
++  private:
++    struct Slot {
++        std::optional<int32_t> instanceId;
++        std::string stableId;
++    };
++
++    std::array<Slot, SlotCount> mSlots = {};
++    std::unordered_map<int32_t, std::string> mKnownDevices;
++    std::unordered_set<std::string> mSuppressedDevices;
++};
++
++} // namespace Ship
+diff --git a/src/fast/Fast3dWindow.cpp b/src/fast/Fast3dWindow.cpp
+index 2b77a5f2ee5c8d42ae8d59ca85a9a3bd426d1450..dc8efeffb0aedcab6eba7857ae777b68e45c49d9 100644
+--- a/src/fast/Fast3dWindow.cpp
++++ b/src/fast/Fast3dWindow.cpp
+@@ -84,6 +84,12 @@ void Fast3dWindow::Init() {
+ 
+     isFullscreen =
+         Ship::Context::GetRawInstance()->GetConfig()->GetBool("Window.Fullscreen.Enabled", false) || gameMode;
++#ifdef __IOS__
++    // UIKit already owns the full-screen window. Desktop SDL fullscreen modes
++    // can leave the Metal view black or constrained to a stale saved size.
++    isFullscreen = false;
++    Ship::Context::GetRawInstance()->GetConfig()->SetBool("Window.Fullscreen.Enabled", false);
++#endif
+     posX = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.PositionX", 100);
+     posY = Ship::Context::GetRawInstance()->GetConfig()->GetInt("Window.PositionY", 100);
+ 
+@@ -126,10 +132,18 @@ void Fast3dWindow::SetMaximumFrameLatency(int32_t latency) {
+ }
+ 
+ void Fast3dWindow::GetPixelDepthPrepare(float x, float y) {
++    if (!IsFrameReady()) {
++        return;
++    }
++
+     mInterpreter->GetPixelDepthPrepare(x, y);
+ }
+ 
+ uint16_t Fast3dWindow::GetPixelDepth(float x, float y) {
++    if (!IsFrameReady()) {
++        return 0;
++    }
++
+     return mInterpreter->GetPixelDepth(x, y);
+ }
+ 
+diff --git a/src/fast/backends/gfx_sdl2.cpp b/src/fast/backends/gfx_sdl2.cpp
+index 15c5415f9d265a1e6d5d961c2f0c5b5b198e5313..c14088c06afa3f2d91a40d9d77ed1f2ccb7f8b35 100644
+--- a/src/fast/backends/gfx_sdl2.cpp
++++ b/src/fast/backends/gfx_sdl2.cpp
+@@ -11,6 +11,11 @@
+ #endif
+ 
+ #include "ship/Context.h"
++#ifdef __IOS__
++#include "ship/audio/Audio.h"
++#include "ship/config/Config.h"
++#include "ship/window/Window.h"
++#endif
+ #include "ship/config/ConsoleVariable.h"
+ #include "ship/controller/controldeck/ControlDeck.h"
+ #include "ship/window/FileDropMgr.h"
+@@ -53,6 +58,25 @@ LONG_PTR SDL_WndProc;
+ #endif
+ 
+ namespace Fast {
++#ifdef __IOS__
++static void SaveIOSConfiguration() {
++    auto context = Ship::Context::GetRawInstance();
++    if (context->GetWindow() != nullptr) {
++        context->GetWindow()->SaveWindowToConfig();
++    }
++    if (context->GetConfig() != nullptr) {
++        context->GetConfig()->Save();
++    }
++}
++
++static void SetIOSAudioPaused(bool paused) {
++    auto audio = Ship::Context::GetRawInstance()->GetAudio();
++    if (audio != nullptr) {
++        audio->SetPaused(paused);
++    }
++}
++#endif
++
+ const SDL_Scancode lus_to_sdl_table[] = {
+     SDL_SCANCODE_UNKNOWN,
+     SDL_SCANCODE_ESCAPE,
+@@ -215,6 +239,16 @@ GfxWindowBackendSDL2::~GfxWindowBackendSDL2() {
+ }
+ 
+ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
++#ifdef __IOS__
++    // An iOS application window is already full-screen. Switching SDL desktop
++    // display modes can detach or invalidate the Metal drawable.
++    mFullScreen = false;
++    if (mOnFullscreenChanged != nullptr && call_callback) {
++        mOnFullscreenChanged(false);
++    }
++    return;
++#endif
++
+     if (mFullScreen == on) {
+         return;
+     }
+@@ -235,7 +269,7 @@ void GfxWindowBackendSDL2::SetFullscreenImpl(bool on, bool call_callback) {
+         }
+     }
+ 
+-#if defined(__APPLE__)
++#if defined(__APPLE__) && !defined(__IOS__)
+     // Implement fullscreening with native macOS APIs
+     if (on != isNativeMacOSFullscreenActive(mWnd)) {
+         toggleNativeMacOSFullscreen(mWnd);
+@@ -434,6 +468,13 @@ void GfxWindowBackendSDL2::Init(const char* gameName, const char* gfxApiName, bo
+         }
+ 
+         SDL_GetRendererOutputSize(mRenderer, &mWindowWidth, &mWindowHeight);
++#ifdef __IOS__
++        int windowWidth = 0;
++        int windowHeight = 0;
++        SDL_GetWindowSize(mWnd, &windowWidth, &windowHeight);
++        SPDLOG_INFO("iOS display initialized: window {}x{}, drawable {}x{}", windowWidth, windowHeight, mWindowWidth,
++                    mWindowHeight);
++#endif
+         window_impl.Metal = { mWnd, mRenderer };
+         window_impl.Backend = WindowBackend::FAST3D_SDL_METAL;
+     }
+@@ -626,9 +667,19 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
+             OnKeyup(event.key.keysym.scancode);
+             break;
+         case SDL_MOUSEBUTTONDOWN:
++#ifdef __IOS__
++            if (event.button.which == SDL_TOUCH_MOUSEID) {
++                break;
++            }
++#endif
+             OnMouseButtonDown(event.button.button - 1);
+             break;
+         case SDL_MOUSEBUTTONUP:
++#ifdef __IOS__
++            if (event.button.which == SDL_TOUCH_MOUSEID) {
++                break;
++            }
++#endif
+             OnMouseButtonUp(event.button.button - 1);
+             break;
+         case SDL_MOUSEWHEEL:
+@@ -657,6 +708,36 @@ void GfxWindowBackendSDL2::HandleSingleEvent(SDL_Event& event) {
+         case SDL_DROPFILE:
+             Ship::Context::GetRawInstance()->GetFileDropMgr()->SetDroppedFile(event.drop.file);
+             break;
++#ifdef __IOS__
++        case SDL_APP_WILLENTERBACKGROUND:
++            mIsBackgrounded = true;
++            SaveIOSConfiguration();
++            SetIOSAudioPaused(true);
++            break;
++        case SDL_APP_DIDENTERBACKGROUND:
++            break;
++        case SDL_APP_WILLENTERFOREGROUND:
++            break;
++        case SDL_APP_DIDENTERFOREGROUND:
++            Ship::Context::GetRawInstance()
++                ->GetControlDeck()
++                ->GetConnectedPhysicalDeviceManager()
++                ->RefreshConnectedSDLGamepads("foreground");
++            if (gui != nullptr) {
++                gui->RefreshImGuiGamepads();
++            }
++            SetIOSAudioPaused(false);
++            mIsBackgrounded = false;
++            break;
++        case SDL_APP_LOWMEMORY:
++            SPDLOG_WARN("iOS reported low memory");
++            break;
++        case SDL_APP_TERMINATING:
++            mIsBackgrounded = true;
++            SaveIOSConfiguration();
++            SetIOSAudioPaused(true);
++            break;
++#endif
+         case SDL_QUIT:
+             Close();
+             break;
+@@ -669,12 +750,12 @@ void GfxWindowBackendSDL2::HandleEvents() {
+     while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_CONTROLLERDEVICEADDED - 1) > 0) {
+         HandleSingleEvent(event);
+     }
+-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_CONTROLLERDEVICEREMOVED + 1, SDL_LASTEVENT) > 0) {
++    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_CONTROLLERDEVICEREMAPPED + 1, SDL_LASTEVENT) > 0) {
+         HandleSingleEvent(event);
+     }
+ 
+     // resync fullscreen state
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     auto nextFullscreenState = isNativeMacOSFullscreenActive(mWnd);
+     if (mFullScreen != nextFullscreenState) {
+         mFullScreen = nextFullscreenState;
+@@ -686,7 +767,11 @@ void GfxWindowBackendSDL2::HandleEvents() {
+ }
+ 
+ bool GfxWindowBackendSDL2::IsFrameReady() {
++#ifdef __IOS__
++    return !mIsBackgrounded;
++#else
+     return true;
++#endif
+ }
+ 
+ static uint64_t qpc_to_100ns(uint64_t qpc) {
+diff --git a/src/libultraship/bridge/windowbridge.cpp b/src/libultraship/bridge/windowbridge.cpp
+index 295c4dc23270897a3456ebe9994e13c0ad5d85b1..e100d305beaa67f6e97209ce8f26d9e2c594107a 100644
+--- a/src/libultraship/bridge/windowbridge.cpp
++++ b/src/libultraship/bridge/windowbridge.cpp
+@@ -2,6 +2,9 @@
+ #include "ship/window/Window.h"
+ #include "ship/Context.h"
+ 
++#include <chrono>
++#include <thread>
++
+ extern "C" {
+ 
+ uint32_t WindowGetWidth() {
+@@ -20,6 +23,17 @@ bool WindowIsRunning() {
+     return Ship::Context::GetRawInstance()->GetWindow()->IsRunning();
+ }
+ 
++bool WindowIsFrameReady() {
++    auto window = Ship::Context::GetRawInstance()->GetWindow();
++    window->HandleEvents();
++
++    const bool ready = window->IsRunning() && window->IsFrameReady();
++    if (!ready) {
++        std::this_thread::sleep_for(std::chrono::milliseconds(16));
++    }
++    return ready;
++}
++
+ int32_t WindowGetPosX() {
+     return Ship::Context::GetRawInstance()->GetWindow()->GetPosX();
+ }
+diff --git a/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp b/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp
+index c431c346a0f7791c8ed908f2fd74a1f842badcc8..1bce6004bedcb0524ec11371c1f3bab83a300931 100644
+--- a/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp
++++ b/src/libultraship/controller/controldevice/controller/mapping/ControllerDefaultMappings.cpp
+@@ -51,7 +51,7 @@ void ControllerDefaultMappings::SetDefaultKeyboardKeyToButtonMappings(
+         { BTN_L, { Ship::KbScancode::LUS_KB_E } },
+         { BTN_R, { Ship::KbScancode::LUS_KB_R } },
+         { BTN_Z, { Ship::KbScancode::LUS_KB_Z } },
+-        { BTN_START, { Ship::KbScancode::LUS_KB_SPACE } },
++        { BTN_START, { Ship::KbScancode::LUS_KB_SPACE, Ship::KbScancode::LUS_KB_ENTER } },
+         { BTN_CUP, { Ship::KbScancode::LUS_KB_ARROWKEY_UP } },
+         { BTN_CDOWN, { Ship::KbScancode::LUS_KB_ARROWKEY_DOWN } },
+         { BTN_CLEFT, { Ship::KbScancode::LUS_KB_ARROWKEY_LEFT } },
+diff --git a/src/libultraship/libultra/os.cpp b/src/libultraship/libultra/os.cpp
+index f003852fceb5f7acdfcf015366f8d3fe7a417b6e..a59b95f20417a0366ec0e9384e4fad3a9d6112cf 100644
+--- a/src/libultraship/libultra/os.cpp
++++ b/src/libultraship/libultra/os.cpp
+@@ -29,6 +29,10 @@ int32_t osContInit(OSMesgQueue* mq, uint8_t* controllerBits, OSContStatus* statu
+         exit(EXIT_FAILURE);
+     }
+ 
++    Ship::Context::GetRawInstance()
++        ->GetControlDeck()
++        ->GetConnectedPhysicalDeviceManager()
++        ->RefreshConnectedSDLGamepads("startup");
+     Ship::Context::GetRawInstance()->GetControlDeck()->Init(controllerBits);
+ 
+     return 0;
+diff --git a/src/ship/Context.cpp b/src/ship/Context.cpp
+index 9317d20905b9ceed604e806c2f87fefc49ae398d..50a87eec243ef230edc7656046839eda713e9889 100644
+--- a/src/ship/Context.cpp
++++ b/src/ship/Context.cpp
+@@ -465,11 +465,6 @@ std::string Context::GetAppBundlePath() {
+     }
+ #endif
+ 
+-#ifdef __IOS__
+-    const char* home = getenv("HOME");
+-    return std::string(home) + "/Documents";
+-#endif
+-
+ #ifdef NON_PORTABLE
+     return CMAKE_INSTALL_PREFIX;
+ #else
+diff --git a/src/ship/audio/Audio.cpp b/src/ship/audio/Audio.cpp
+index 8cc5b12e813d0fd221c4dc93df6330d6f5a9effb..b24d7ad745bdfe5b661a0a5bfc2d3064ecd43c87 100644
+--- a/src/ship/audio/Audio.cpp
++++ b/src/ship/audio/Audio.cpp
+@@ -1,6 +1,6 @@
+ #include "ship/audio/Audio.h"
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+ #include "ship/audio/CoreAudioAudioPlayer.h"
+ #endif
+ 
+@@ -21,7 +21,7 @@ void Audio::InitAudioPlayer() {
+             mAudioPlayer = std::make_shared<WasapiAudioPlayer>(this->mAudioSettings);
+             break;
+ #endif
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+         case AudioBackend::COREAUDIO:
+             mAudioPlayer = std::make_shared<CoreAudioAudioPlayer>(this->mAudioSettings);
+             break;
+@@ -48,7 +48,7 @@ void Audio::Init() {
+ #ifdef _WIN32
+     mAvailableAudioBackends->push_back(AudioBackend::WASAPI);
+ #endif
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     mAvailableAudioBackends->push_back(AudioBackend::COREAUDIO);
+ #endif
+     mAvailableAudioBackends->push_back(AudioBackend::SDL);
+@@ -97,7 +97,7 @@ AudioBackend Audio::GetSavedAudioBackend() {
+     return AudioBackend::WASAPI;
+ #endif
+ 
+-#ifdef __APPLE__
++#if defined(__APPLE__) && !defined(__IOS__)
+     return AudioBackend::COREAUDIO;
+ #endif
+ 
+@@ -146,6 +146,12 @@ AudioChannelsSetting Audio::GetAudioChannels() const {
+     return mAudioSettings.ChannelSetting;
+ }
+ 
++void Audio::SetPaused(bool paused) {
++    if (mAudioPlayer) {
++        mAudioPlayer->SetPaused(paused);
++    }
++}
++
+ AudioChannelsSetting Audio::GetSavedAudioChannelsSetting() {
+     int32_t channelsSetting =
+         mConfig->GetInt("CVars." CVAR_AUDIO_CHANNELS_SETTING, static_cast<int32_t>(AudioChannelsSetting::audioMax));
+diff --git a/src/ship/audio/SDLAudioPlayer.cpp b/src/ship/audio/SDLAudioPlayer.cpp
+index d9f1e44d6dd27f2d50222004bc93f015a2ede15d..e0e601c379e6bf3b0a6ebdc998c266fbb3796585 100644
+--- a/src/ship/audio/SDLAudioPlayer.cpp
++++ b/src/ship/audio/SDLAudioPlayer.cpp
+@@ -21,6 +21,9 @@ void SDLAudioPlayer::DoClose() {
+ }
+ 
+ bool SDLAudioPlayer::DoInit() {
++#ifdef __IOS__
++    SDL_SetHint(SDL_HINT_AUDIO_CATEGORY, "playback");
++#endif
+     if (SDL_Init(SDL_INIT_AUDIO) != 0) {
+         SPDLOG_ERROR("SDL init error: {}", SDL_GetError());
+         return false;
+@@ -53,8 +56,19 @@ int SDLAudioPlayer::Buffered() {
+     return SDL_GetQueuedAudioSize(mDevice) / (sizeof(int16_t) * mNumChannels);
+ }
+ 
++void SDLAudioPlayer::SetPaused(bool paused) {
++    mPaused = paused;
++    if (mDevice == 0) {
++        return;
++    }
++    SDL_PauseAudioDevice(mDevice, paused ? 1 : 0);
++    if (paused) {
++        SDL_ClearQueuedAudio(mDevice);
++    }
++}
++
+ void SDLAudioPlayer::DoPlay(const uint8_t* buf, size_t len) {
+-    if (Buffered() < 6000) {
++    if (!mPaused && Buffered() < 6000) {
+         // Don't fill the audio buffer too much in case this happens
+         SDL_QueueAudio(mDevice, buf, len);
+     }
+diff --git a/src/ship/controller/controldevice/controller/ControllerButton.cpp b/src/ship/controller/controldevice/controller/ControllerButton.cpp
+index eced487d0e88bcf3d81ba3464e3107074e87cedd..5a55d5d8586b079a8272bcde53610c6237008910 100644
+--- a/src/ship/controller/controldevice/controller/ControllerButton.cpp
++++ b/src/ship/controller/controldevice/controller/ControllerButton.cpp
+@@ -5,6 +5,10 @@
+ #include "ship/controller/controldevice/controller/mapping/keyboard/KeyboardKeyToButtonMapping.h"
+ #include "ship/controller/controldevice/controller/mapping/mouse/MouseButtonToButtonMapping.h"
+ 
++#ifdef __IOS__
++#include "libultraship/libultra/controller.h"
++#endif
++
+ #include "ship/config/ConsoleVariable.h"
+ #include "ship/utils/StringHelper.h"
+ #include <sstream>
+@@ -248,6 +252,23 @@ void ControllerButton::AddDefaultMappings(PhysicalDeviceType physicalDeviceType)
+         }
+     }
+ 
++#ifdef __IOS__
++    if (physicalDeviceType == PhysicalDeviceType::Mouse) {
++        MouseBtn mouseButton = LUS_MOUSE_BTN_UNKNOWN;
++        if (mBitmask == BTN_A) {
++            mouseButton = LUS_MOUSE_BTN_LEFT;
++        } else if (mBitmask == BTN_B) {
++            mouseButton = LUS_MOUSE_BTN_RIGHT;
++        } else if (mBitmask == BTN_Z) {
++            mouseButton = LUS_MOUSE_BTN_MIDDLE;
++        }
++        if (mouseButton != LUS_MOUSE_BTN_UNKNOWN) {
++            AddButtonMapping(
++                std::make_shared<MouseButtonToButtonMapping>(mPortIndex, mBitmask, mouseButton));
++        }
++    }
++#endif
++
+     for (auto [id, mapping] : mButtonMappings) {
+         mapping->SaveToConfig();
+     }
+diff --git a/src/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.cpp b/src/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.cpp
+index 7f0397e2518101685c1c874711db10cb60df22c3..43ba76b069ca30fc477e6f213225af31abf1b034 100644
+--- a/src/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.cpp
++++ b/src/ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.cpp
+@@ -1,108 +1,218 @@
+ #include "ship/controller/physicaldevice/ConnectedPhysicalDeviceManager.h"
++
++#include <utility>
++#include <vector>
++#include <string_view>
+ #include <spdlog/spdlog.h>
+ 
+ namespace Ship {
++namespace {
++constexpr Uint64 ActiveReconcileIntervalMs = 1000;
++}
++
+ ConnectedPhysicalDeviceManager::ConnectedPhysicalDeviceManager() {
+ }
+ 
+ ConnectedPhysicalDeviceManager::~ConnectedPhysicalDeviceManager() {
++    for (const auto& [instanceId, record] : mConnectedSDLGamepads) {
++        CloseGamepad(instanceId, record, "shutdown");
++    }
+ }
+ 
+ std::unordered_map<int32_t, SDL_GameController*>
+ ConnectedPhysicalDeviceManager::GetConnectedSDLGamepadsForPort(uint8_t portIndex) {
+     std::unordered_map<int32_t, SDL_GameController*> result;
++    auto assignedInstanceId = mSlotAssignments.GetInstanceId(portIndex);
++    if (!assignedInstanceId.has_value()) {
++        return result;
++    }
+ 
+-    for (const auto& [instanceId, gamepad] : mConnectedSDLGamepads) {
+-        if (!PortIsIgnoringInstanceId(portIndex, instanceId)) {
+-            result[instanceId] = gamepad;
+-        }
++    auto record = mConnectedSDLGamepads.find(*assignedInstanceId);
++    if (record == mConnectedSDLGamepads.end() || record->second.gamepad == nullptr ||
++        !SDL_GameControllerGetAttached(record->second.gamepad)) {
++        // Stop gameplay reads immediately. The next manager update will close
++        // and replace this handle even if SDL's removal event was missed.
++        mNeedsReconcile = true;
++        return result;
+     }
+ 
++    result[*assignedInstanceId] = record->second.gamepad;
+     return result;
+ }
+ 
+ std::unordered_map<int32_t, std::string> ConnectedPhysicalDeviceManager::GetConnectedSDLGamepadNames() {
+-    return mConnectedSDLGamepadNames;
++    std::unordered_map<int32_t, std::string> names;
++    for (const auto& [instanceId, record] : mConnectedSDLGamepads) {
++        if (record.gamepad != nullptr && SDL_GameControllerGetAttached(record.gamepad)) {
++            names[instanceId] = record.name;
++        }
++    }
++    return names;
+ }
+ 
+ std::unordered_set<int32_t> ConnectedPhysicalDeviceManager::GetIgnoredInstanceIdsForPort(uint8_t portIndex) {
+-    return mIgnoredInstanceIds[portIndex];
++    std::unordered_set<int32_t> ignored;
++    for (const auto& [instanceId, record] : mConnectedSDLGamepads) {
++        if (mSlotAssignments.GetSlot(instanceId) != portIndex) {
++            ignored.insert(instanceId);
++        }
++    }
++    return ignored;
+ }
+ 
+ bool ConnectedPhysicalDeviceManager::PortIsIgnoringInstanceId(uint8_t portIndex, int32_t instanceId) {
+-    return GetIgnoredInstanceIdsForPort(portIndex).contains(instanceId);
++    return mSlotAssignments.GetSlot(instanceId) != portIndex;
+ }
+ 
+ void ConnectedPhysicalDeviceManager::IgnoreInstanceIdForPort(uint8_t portIndex, int32_t instanceId) {
+-    mIgnoredInstanceIds[portIndex].insert(instanceId);
++    if (mSlotAssignments.Unassign(instanceId, portIndex)) {
++        SPDLOG_INFO("Controller instance {} released from player {} by settings", instanceId, portIndex + 1);
++    }
+ }
+ 
+ void ConnectedPhysicalDeviceManager::UnignoreInstanceIdForPort(uint8_t portIndex, int32_t instanceId) {
+-    mIgnoredInstanceIds[portIndex].erase(instanceId);
++    if (mSlotAssignments.Assign(instanceId, portIndex)) {
++        SPDLOG_INFO("Controller instance {} assigned to player {} by settings", instanceId, portIndex + 1);
++    }
+ }
+ 
+ void ConnectedPhysicalDeviceManager::HandlePhysicalDeviceConnect(int32_t sdlDeviceIndex) {
+-    RefreshConnectedSDLGamepads();
++    SPDLOG_INFO("Controller add event for SDL device index {}", sdlDeviceIndex);
++    RefreshConnectedSDLGamepads("add-event");
+ }
+ 
+ void ConnectedPhysicalDeviceManager::HandlePhysicalDeviceDisconnect(int32_t sdlJoystickInstanceId) {
+-    RefreshConnectedSDLGamepads();
++    SPDLOG_INFO("Controller remove event for instance {}", sdlJoystickInstanceId);
++    RefreshConnectedSDLGamepads("remove-event");
++}
++
++void ConnectedPhysicalDeviceManager::HandlePhysicalDeviceRemap(int32_t sdlJoystickInstanceId) {
++    SPDLOG_INFO("Controller remap event for instance {}", sdlJoystickInstanceId);
++    RefreshConnectedSDLGamepads("remap-event");
++}
++
++std::string ConnectedPhysicalDeviceManager::BuildStableId(SDL_GameController* gamepad, const char* guid,
++                                                          const std::string& name) const {
++    const char* serial = SDL_GameControllerGetSerial(gamepad);
++    return std::string(guid) + "|" + (serial != nullptr && serial[0] != '\0' ? serial : name);
++}
++
++void ConnectedPhysicalDeviceManager::CloseGamepad(int32_t instanceId, const SDLGamepadRecord& record,
++                                                  const char* reason) {
++    auto slot = mSlotAssignments.GetSlot(instanceId);
++    if (slot.has_value()) {
++        SPDLOG_INFO("Controller instance {} released from player {} during {}", instanceId, *slot + 1, reason);
++    }
++    if (record.gamepad != nullptr) {
++        SPDLOG_INFO("Closing controller instance {} ({}) during {}", instanceId, record.name, reason);
++        SDL_GameControllerClose(record.gamepad);
++    }
+ }
+ 
+-void ConnectedPhysicalDeviceManager::RefreshConnectedSDLGamepads() {
+-    mConnectedSDLGamepads.clear();
+-    mConnectedSDLGamepadNames.clear();
++void ConnectedPhysicalDeviceManager::RefreshConnectedSDLGamepads(const char* reason) {
++    if (std::string_view(reason) != "active-check") {
++        SPDLOG_INFO("Reconciling controllers: {}", reason);
++    }
++
++    std::unordered_map<int32_t, SDLGamepadRecord> nextGamepads;
++    std::vector<ControllerSlotAssignments::Device> discoveredDevices;
+     static SDL_JoystickGUID sZeroGuid;
+ 
+-    for (int32_t i = 0; i < SDL_NumJoysticks(); i++) {
++    for (int32_t deviceIndex = 0; deviceIndex < SDL_NumJoysticks(); ++deviceIndex) {
++        SDL_JoystickGUID deviceGuid = SDL_JoystickGetDeviceGUID(deviceIndex);
++        if (SDL_memcmp(&deviceGuid, &sZeroGuid, sizeof(deviceGuid)) == 0) {
++            SPDLOG_WARN("Controller device index {} returned a zero GUID during {}", deviceIndex, reason);
++            continue;
++        }
+ 
+-        SDL_JoystickGUID deviceGUID = SDL_JoystickGetDeviceGUID(i);
+-        if (SDL_memcmp(&deviceGUID, &sZeroGuid, sizeof(deviceGUID)) == 0) {
+-            SPDLOG_WARN(
+-                "Calling SDL JoystickGetDeviceGUID with index ({:d}) returned zero GUID. This is likely due to an "
+-                "invalid index. Refer to https://wiki.libsdl.org/SDL2/SDL_JoystickGetDeviceGUID for more information.",
+-                i);
++        char guid[33] = "";
++        SDL_JoystickGetGUIDString(deviceGuid, guid, sizeof(guid));
++        if (!SDL_IsGameController(deviceIndex)) {
++            SPDLOG_WARN("SDL joystick device index {} (GUID {}) is not a mapped game controller", deviceIndex, guid);
+             continue;
+         }
+ 
+-        char deviceGuidCStr[33] = "";
+-        SDL_JoystickGetGUIDString(deviceGUID, deviceGuidCStr, sizeof(deviceGuidCStr));
++        int32_t instanceId = SDL_JoystickGetDeviceInstanceID(deviceIndex);
++        if (instanceId < 0) {
++            SPDLOG_ERROR("Could not resolve controller device index {} during {}: {}", deviceIndex, reason,
++                         SDL_GetError());
++            continue;
++        }
+ 
+-        if (!SDL_IsGameController(i)) {
+-            SPDLOG_WARN("SDL Joystick (GUID: {}) not recognized as gamepad."
+-                        "This is likely due to a missing mapping string in gamecontrollerdb.txt."
+-                        "Refer to https://github.com/mdqinc/SDL_GameControllerDB for more information.",
+-                        deviceGuidCStr);
++        auto existing = mConnectedSDLGamepads.find(instanceId);
++        if (existing != mConnectedSDLGamepads.end() && existing->second.gamepad != nullptr &&
++            SDL_GameControllerGetAttached(existing->second.gamepad)) {
++            nextGamepads.emplace(instanceId, existing->second);
++            discoveredDevices.push_back({ instanceId, existing->second.stableId });
+             continue;
+         }
+ 
+-        auto gamepad = SDL_GameControllerOpen(i);
++        SDL_GameController* gamepad = SDL_GameControllerOpen(deviceIndex);
+         if (gamepad == nullptr) {
+-            SPDLOG_ERROR("SDL GameControllerOpen error (GUID: {}): {}", deviceGuidCStr, SDL_GetError());
++            SPDLOG_ERROR("Could not open controller device index {} (GUID {}) during {}: {}", deviceIndex, guid,
++                         reason, SDL_GetError());
+             continue;
+         }
+ 
+-        auto instanceId = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad));
+-        if (instanceId < 0) {
+-            SPDLOG_ERROR("SDL JoystickInstanceID error (GUID: {}): {}", deviceGuidCStr, SDL_GetError());
++        int32_t openedInstanceId = SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(gamepad));
++        if (openedInstanceId < 0) {
++            SPDLOG_ERROR("Could not resolve opened controller device index {} during {}: {}", deviceIndex, reason,
++                         SDL_GetError());
++            SDL_GameControllerClose(gamepad);
+             continue;
+         }
+ 
+-        std::string gamepadName;
+-        auto name = SDL_GameControllerName(gamepad);
+-        if (name == nullptr) {
+-            gamepadName = deviceGuidCStr;
+-            SPDLOG_WARN("SDL_GameControllerName returned null. Setting name to GUID \"{}\" instead.", gamepadName);
+-        } else {
+-            gamepadName = name;
++        const char* controllerName = SDL_GameControllerName(gamepad);
++        std::string name = controllerName != nullptr ? controllerName : guid;
++        SDLGamepadRecord record = { gamepad, name, BuildStableId(gamepad, guid, name) };
++        auto [inserted, wasInserted] = nextGamepads.emplace(openedInstanceId, std::move(record));
++        if (!wasInserted) {
++            SPDLOG_WARN("Ignoring duplicate controller instance {} at device index {}", openedInstanceId,
++                        deviceIndex);
++            SDL_GameControllerClose(gamepad);
++            continue;
+         }
++        discoveredDevices.push_back({ openedInstanceId, inserted->second.stableId });
++        SPDLOG_INFO("Opened controller device index {} as instance {} ({}) during {}", deviceIndex, openedInstanceId,
++                    name, reason);
++    }
+ 
+-        mConnectedSDLGamepads[instanceId] = gamepad;
+-        mConnectedSDLGamepadNames[instanceId] = gamepadName;
++    for (const auto& [instanceId, record] : mConnectedSDLGamepads) {
++        auto replacement = nextGamepads.find(instanceId);
++        if (replacement == nextGamepads.end() || replacement->second.gamepad != record.gamepad) {
++            CloseGamepad(instanceId, record, reason);
++        }
++    }
+ 
+-        for (uint8_t port = 1; port < 4; port++) {
+-            mIgnoredInstanceIds[port].insert(instanceId);
++    std::unordered_map<int32_t, std::optional<uint8_t>> previousSlots;
++    for (const auto& [instanceId, record] : mConnectedSDLGamepads) {
++        previousSlots[instanceId] = mSlotAssignments.GetSlot(instanceId);
++    }
++    mSlotAssignments.Reconcile(discoveredDevices);
++    for (const auto& device : discoveredDevices) {
++        auto slot = mSlotAssignments.GetSlot(device.instanceId);
++        auto previous = previousSlots.find(device.instanceId);
++        if (slot.has_value() &&
++            (previous == previousSlots.end() || previous->second != slot)) {
++            SPDLOG_INFO("Controller instance {} assigned to player {} during {}", device.instanceId, *slot + 1,
++                        reason);
++        } else if (!slot.has_value()) {
++            SPDLOG_WARN("Controller instance {} has no free player slot during {}", device.instanceId, reason);
+         }
+     }
++
++    mConnectedSDLGamepads = std::move(nextGamepads);
++    mLastReconcileTicks = SDL_GetTicks64();
++    mNeedsReconcile = false;
+ }
++
++bool ConnectedPhysicalDeviceManager::ReconcileIfNeeded(const char* reason) {
++    Uint64 now = SDL_GetTicks64();
++    if (!mNeedsReconcile && now - mLastReconcileTicks < ActiveReconcileIntervalMs) {
++        return false;
++    }
++    RefreshConnectedSDLGamepads(reason);
++    return true;
++}
++
+ } // namespace Ship
+diff --git a/src/ship/controller/physicaldevice/ControllerSlotAssignments.cpp b/src/ship/controller/physicaldevice/ControllerSlotAssignments.cpp
+new file mode 100644
+index 0000000000000000000000000000000000000000..b949cd0d08b4a3a44e6b76b8cf1d7f33d265bcb7
+--- /dev/null
++++ b/src/ship/controller/physicaldevice/ControllerSlotAssignments.cpp
+@@ -0,0 +1,133 @@
++#include "ship/controller/physicaldevice/ControllerSlotAssignments.h"
++
++#include <unordered_set>
++
++namespace Ship {
++
++void ControllerSlotAssignments::Reconcile(const std::vector<Device>& devices) {
++    mKnownDevices.clear();
++    for (const auto& device : devices) {
++        mKnownDevices[device.instanceId] = device.stableId;
++    }
++
++    auto previousSlots = mSlots;
++    for (auto& slot : mSlots) {
++        slot.instanceId.reset();
++    }
++
++    std::unordered_set<int32_t> assigned;
++
++    // Preserve valid connected instances in their existing slots.
++    for (uint8_t slotIndex = 0; slotIndex < SlotCount; ++slotIndex) {
++        const auto& previous = previousSlots[slotIndex];
++        if (!previous.instanceId.has_value()) {
++            continue;
++        }
++
++        auto known = mKnownDevices.find(*previous.instanceId);
++        if (known != mKnownDevices.end() && known->second == previous.stableId &&
++            !mSuppressedDevices.contains(known->second)) {
++            mSlots[slotIndex] = previous;
++            assigned.insert(*previous.instanceId);
++        }
++    }
++
++    // A valid controller keeps its slot. If the sole device is instead a
++    // returning/new instance after all prior ownership went stale, it becomes
++    // player 1.
++    if (devices.size() == 1 && assigned.empty() && !mSuppressedDevices.contains(devices[0].stableId)) {
++        mSlots[0] = { devices[0].instanceId, devices[0].stableId };
++        return;
++    }
++
++    // A reconnected controller with a new SDL instance ID reclaims its prior
++    // slot when its backend identity is still available.
++    for (const auto& device : devices) {
++        if (assigned.contains(device.instanceId)) {
++            continue;
++        }
++        if (mSuppressedDevices.contains(device.stableId)) {
++            continue;
++        }
++        for (uint8_t slotIndex = 0; slotIndex < SlotCount; ++slotIndex) {
++            if (!mSlots[slotIndex].instanceId.has_value() &&
++                previousSlots[slotIndex].stableId == device.stableId) {
++                mSlots[slotIndex] = { device.instanceId, device.stableId };
++                assigned.insert(device.instanceId);
++                break;
++            }
++        }
++    }
++
++    // Genuinely additional controllers take the next free player slot.
++    for (const auto& device : devices) {
++        if (assigned.contains(device.instanceId)) {
++            continue;
++        }
++        if (mSuppressedDevices.contains(device.stableId)) {
++            continue;
++        }
++        for (uint8_t slotIndex = 0; slotIndex < SlotCount; ++slotIndex) {
++            if (!mSlots[slotIndex].instanceId.has_value()) {
++                mSlots[slotIndex] = { device.instanceId, device.stableId };
++                assigned.insert(device.instanceId);
++                break;
++            }
++        }
++    }
++}
++
++bool ControllerSlotAssignments::Assign(int32_t instanceId, uint8_t slot) {
++    auto known = mKnownDevices.find(instanceId);
++    if (known == mKnownDevices.end() || slot >= SlotCount) {
++        return false;
++    }
++
++    auto currentSlot = GetSlot(instanceId);
++    auto displacedInstanceId = mSlots[slot].instanceId;
++    if (currentSlot.has_value()) {
++        mSlots[*currentSlot].instanceId.reset();
++    }
++    mSlots[slot] = { instanceId, known->second };
++    mSuppressedDevices.erase(known->second);
++
++    if (displacedInstanceId.has_value() && *displacedInstanceId != instanceId) {
++        auto displaced = mKnownDevices.find(*displacedInstanceId);
++        if (currentSlot.has_value() && displaced != mKnownDevices.end()) {
++            mSlots[*currentSlot] = { *displacedInstanceId, displaced->second };
++        } else if (displaced != mKnownDevices.end()) {
++            mSuppressedDevices.insert(displaced->second);
++        }
++    }
++    return true;
++}
++
++bool ControllerSlotAssignments::Unassign(int32_t instanceId, uint8_t slot) {
++    if (slot >= SlotCount || mSlots[slot].instanceId != instanceId) {
++        return false;
++    }
++    auto known = mKnownDevices.find(instanceId);
++    if (known != mKnownDevices.end()) {
++        mSuppressedDevices.insert(known->second);
++    }
++    mSlots[slot].instanceId.reset();
++    return true;
++}
++
++std::optional<uint8_t> ControllerSlotAssignments::GetSlot(int32_t instanceId) const {
++    for (uint8_t slotIndex = 0; slotIndex < SlotCount; ++slotIndex) {
++        if (mSlots[slotIndex].instanceId == instanceId) {
++            return slotIndex;
++        }
++    }
++    return std::nullopt;
++}
++
++std::optional<int32_t> ControllerSlotAssignments::GetInstanceId(uint8_t slot) const {
++    if (slot >= SlotCount) {
++        return std::nullopt;
++    }
++    return mSlots[slot].instanceId;
++}
++
++} // namespace Ship
+diff --git a/src/ship/controller/physicaldevice/SDLAddRemoveDeviceEventHandler.cpp b/src/ship/controller/physicaldevice/SDLAddRemoveDeviceEventHandler.cpp
+index a85c7d7e74dee3ca84ac8c3d30e54415425e31c4..b08fcae0c56d332b8781ea8acce2855c2d1aa7f7 100644
+--- a/src/ship/controller/physicaldevice/SDLAddRemoveDeviceEventHandler.cpp
++++ b/src/ship/controller/physicaldevice/SDLAddRemoveDeviceEventHandler.cpp
+@@ -20,23 +20,26 @@ void SDLAddRemoveDeviceEventHandler::UpdateElement() {
+     SDL_PumpEvents();
+     SDL_Event event;
+     bool changed = false;
+-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEADDED) > 0) {
+-        // from https://wiki.libsdl.org/SDL2/SDL_ControllerDeviceEvent: which - the joystick device index for
+-        // the SDL_CONTROLLERDEVICEADDED event
+-        Context::GetRawInstance()->GetControlDeck()->GetConnectedPhysicalDeviceManager()->HandlePhysicalDeviceConnect(
+-            event.cdevice.which);
+-        changed = true;
++    auto manager = Context::GetRawInstance()->GetControlDeck()->GetConnectedPhysicalDeviceManager();
++    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMAPPED) > 0) {
++        switch (event.type) {
++            case SDL_CONTROLLERDEVICEADDED:
++                // SDL supplies a device index only for the add event.
++                manager->HandlePhysicalDeviceConnect(event.cdevice.which);
++                changed = true;
++                break;
++            case SDL_CONTROLLERDEVICEREMOVED:
++                manager->HandlePhysicalDeviceDisconnect(event.cdevice.which);
++                changed = true;
++                break;
++            case SDL_CONTROLLERDEVICEREMAPPED:
++                manager->HandlePhysicalDeviceRemap(event.cdevice.which);
++                changed = true;
++                break;
++        }
+     }
+ 
+-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_CONTROLLERDEVICEREMOVED, SDL_CONTROLLERDEVICEREMOVED) > 0) {
+-        // from https://wiki.libsdl.org/SDL2/SDL_ControllerDeviceEvent: which - the [...] instance id for the
+-        // SDL_CONTROLLERDEVICEREMOVED [...] event
+-        Context::GetRawInstance()
+-            ->GetControlDeck()
+-            ->GetConnectedPhysicalDeviceManager()
+-            ->HandlePhysicalDeviceDisconnect(event.cdevice.which);
+-        changed = true;
+-    }
++    changed = manager->ReconcileIfNeeded("active-check") || changed;
+ 
+     // The connected controller set changed, so re-point the ImGui gamepad
+     // backend at it (keeps menu navigation working across hotplug).
+diff --git a/src/ship/window/gui/GameOverlay.cpp b/src/ship/window/gui/GameOverlay.cpp
+index eaea3cd7c4fed7f59d4661d37dca4b23746e5881..5bc888a9f57cec7eeef5bf644ebac5e484d32e8f 100644
+--- a/src/ship/window/gui/GameOverlay.cpp
++++ b/src/ship/window/gui/GameOverlay.cpp
+@@ -237,9 +237,10 @@ void GameOverlay::Draw() {
+             const float duration = overlay.duration / overlay.fadeTime;
+ 
+             const ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, duration);
+-#ifdef __ANDROID__
+-            const float textWidth = GetStringWidth(overlay.Value.c_str()) * 2.0f;
+-            const float textOffset = 40.0f * 2.0f;
++#if defined(__ANDROID__) || defined(__IOS__)
++            const float mobileScale = ImGui::GetIO().FontGlobalScale;
++            const float textWidth = GetStringWidth(overlay.Value.c_str()) * mobileScale;
++            const float textOffset = 40.0f * mobileScale;
+ #else
+             const float textWidth = GetStringWidth(overlay.Value.c_str());
+             const float textOffset = 40.0f;
+diff --git a/src/ship/window/gui/Gui.cpp b/src/ship/window/gui/Gui.cpp
+index 1cf50fcc6c2d2e1cf70b0b5651ba3921584fd8ec..e3be55cbc862069893d96a8720f7664b0863f989 100644
+--- a/src/ship/window/gui/Gui.cpp
++++ b/src/ship/window/gui/Gui.cpp
+@@ -7,6 +7,11 @@
+ #include <string>
+ #include <vector>
+ 
++#ifdef __IOS__
++#include <SDL2/SDL.h>
++extern "C" void HarkinianPad_SetTouchControlsMenuVisible(int visible);
++#endif
++
+ #include "ship/config/Config.h"
+ #include "ship/Context.h"
+ #include "ship/config/ConsoleVariable.h"
+@@ -71,9 +76,19 @@ void Gui::Init() {
+                                                           &iconsConfig, sIconsRanges);
+ 
+ #if defined(__ANDROID__)
+-    // Scale everything by 2 for Android
+     ImGui::GetStyle().ScaleAllSizes(2.0f);
+     mImGuiIo->FontGlobalScale = 2.0f;
++#elif defined(__IOS__)
++    SDL_Rect displayBounds = {};
++    float uiScale = 1.0f;
++    if (SDL_GetDisplayUsableBounds(0, &displayBounds) == 0) {
++        const int shortestSide = displayBounds.w < displayBounds.h ? displayBounds.w : displayBounds.h;
++        if (shortestSide >= 600) {
++            uiScale = 2.0f;
++        }
++    }
++    ImGui::GetStyle().ScaleAllSizes(uiScale);
++    mImGuiIo->FontGlobalScale = uiScale;
+ #endif
+ 
+     mImGuiIniPath = Context::GetPathRelativeToAppDirectory("imgui.ini");
+@@ -239,6 +254,10 @@ void Gui::DrawMenu() {
+         GetMenu()->Draw();
+     }
+ 
++#ifdef __IOS__
++    HarkinianPad_SetTouchControlsMenuVisible(GetMenuOrMenubarVisible());
++#endif
++
+     for (auto& windowIter : mGuiWindows) {
+         windowIter.second->Update();
+         windowIter.second->Draw();

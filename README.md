@@ -43,7 +43,7 @@ relicense Shipwright, third-party projects, or game material.
 
 | Option | Status | What to do |
 |---|---|---|
-| Make your own IPA with PadMint | **Available now** | On a Mac, [PadMint](https://github.com/chrissotraidis/padmint/releases/latest) builds HarkinianPad from this repository's latest release and saves an unsigned IPA; install it with AltStore Classic, SideStore or Sideloadly. See [Get started](#get-started). |
+| Make your own IPA with PadMint | **Available now** | On an Apple Silicon Mac, or on [GitHub's free Mac](https://github.com/chrissotraidis/padmint#no-mac-build-on-githubs-mac) without one, [PadMint](https://github.com/chrissotraidis/padmint/releases/latest) builds HarkinianPad from this repository's latest release and saves an unsigned IPA; install it with AltStore Classic, SideStore or Sideloadly. See [Get started](#get-started). |
 | AltStore PAL / computer-free install | **Not available** | The current IPA is not an AltStore PAL release. Installing AltStore Classic through PAL does not remove Classic's requirement for AltServer on a Mac or Windows PC. |
 | Local iPad build | **Available now** | Build and sign with your Apple development team using the instructions below. |
 | Simulator | **Available now** | Best for development and UI testing; it is not a substitute for physical-device testing. |
@@ -77,6 +77,10 @@ repository's latest release (about 15 minutes) and saves an unsigned IPA in your
 Install it with your sideloading tool, copy your ROM into the HarkinianPad folder in Files,
 then return to the app and tap **Rescan** (see [First launch](#first-launch)).
 Releases publish no app: the app is compiled from the Ship of Harkinian decompilation, so you make your own.
+
+**No Mac?** You can build the iPhone and iPad app on GitHub's free Mac from Windows,
+Linux or any computer with a web browser: follow
+[PadMint's steps](https://github.com/chrissotraidis/padmint#no-mac-build-on-githubs-mac).
 
 The released recipe checks the build tools but does not check these desktop
 libraries before compiling. Install the libraries above before starting PadMint.
@@ -270,7 +274,7 @@ privacy manifest; that remains an official-store distribution gate.
 <details>
 <summary><strong>Where is the IPA?</strong></summary>
 
-There is no public IPA: HarkinianPad is compiled from the Ship of Harkinian decompilation, so PadMint builds your own on an Apple Silicon Mac. See [Get started](#get-started).
+There is no public IPA: HarkinianPad is compiled from the Ship of Harkinian decompilation, so PadMint builds your own on an Apple Silicon Mac or on GitHub's free Mac. See [Get started](#get-started).
 </details>
 
 <details>

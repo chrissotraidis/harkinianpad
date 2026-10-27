@@ -5,7 +5,19 @@ base, Shipwright `da4e6dc3321bda48a313b162261156580bc376f4`. These are source
 findings, not physical-device compatibility endorsements. No packs, ROMs or
 third-party art are redistributed here.
 
-## Pack import in Preview 6
+## Current source: Shipwright 9.3.1 integration
+
+The local, unreleased 9.3.1 integration also accepts `.ootrs` music packs,
+directly or inside ZIP bundles. They use the same validation limits, saved
+enable/disable selection and restart requirement as other packs. Only enabled
+packs reach upstream's music loader. Upstream skips custom sound banks and packs
+with no usable sequences; the menu reports skipped packs. Successful container
+validation does not establish audible playback or musical compatibility.
+
+Native import tests cover direct/bundled music packs, malformed input rollback,
+and disabled selection. Physical-device music playback remains unverified.
+
+## Pack import established in Preview 6
 
 These controls ship in Preview 6 (retired), app version 0.1.0 build 6.
 

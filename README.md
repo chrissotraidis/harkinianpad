@@ -320,7 +320,7 @@ requirements.
 <summary><strong>What is the licensing status?</strong></summary>
 
 Each upstream component retains its own license and copyright. Libultraship,
-ZAPDTR, OTRExporter, SDL, and their dependencies carry their respective
+Torch, SDL, and their dependencies carry their respective
 licenses. HarkinianPad-owned integration code, scripts, documentation,
 artwork, and original patch content are publicly readable but currently carry
 no license grant. HarkinianPad is therefore source-available, not broadly
@@ -384,7 +384,7 @@ HarkinianPad is an unofficial community project and is not affiliated with or
 endorsed by Nintendo or Harbour Masters. It does not provide the game, ROM
 downloads, or playable ROM-derived data.
 
-This project builds on Ship of Harkinian, libultraship, ZAPDTR, OTRExporter,
+This project builds on Ship of Harkinian, libultraship, Torch (previously ZAPDTR/OTRExporter),
 the Ocarina of Time decompilation project, SDL, and their contributors. All
 projects, copyrights, and trademarks belong to their respective owners.
 
@@ -400,3 +400,6 @@ owners). This repository contains no game data, ROMs, or extracted assets. To
 use it, you need your own legally obtained copy of the game, and you build it
 yourself on your own machine. Please don't share game files or builds made from
 them.
+
+Current local development integrates Ship of Harkinian 9.3.1; public 0.2.1
+uses 9.2.3. See the [local upgrade qualification and remaining device checks](docs/SHIPWRIGHT_9_3_1.md).

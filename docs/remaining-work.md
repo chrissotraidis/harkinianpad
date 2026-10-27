@@ -6,6 +6,58 @@ The detailed investigation in that plan and [`findings/`](findings/) remains
 the technical baseline; this file records current state, tested evidence, and
 the next reproducible gate.
 
+## Maintenance snapshot — 27 October 2026
+
+Local branch `codex/shipwright-9.3.1` now integrates upstream **9.3.1**,
+its libultraship update, Torch extraction and upstream RAW texture fixes
+[#1143](https://github.com/Kenix3/libultraship/pull/1143) and
+[#1172](https://github.com/Kenix3/libultraship/pull/1172).
+See [the migration qualification](SHIPWRIGHT_9_3_1.md) for source identities,
+test results and remaining limits. All new commits and builds remain local.
+Public main `8409392` and release `v0.2.1` still select Shipwright **9.2.3**.
+Application version and engine version are separate.
+
+Both iPhoneOS and ARM64 Simulator builds pass. The full 435-test native suite
+passes with ASan/UBSan, all 30 Python regressions pass without skips, and the
+new portable resource archive matches the native packer byte for byte. App
+extraction in a fresh Simulator container matches native extraction. These
+checks do not close physical-device acceptance gates.
+
+The updated build is also installed locally on the maintainer's iPhone 14.
+Temporary child-Link tests passed daytime Kakariko ↔ Graveyard, daytime tomb
+entry/exit, nighttime tomb exit, Graveyard pause rendering and a Sun's Song
+day-to-night reload. Original saves/settings were hash-verified after
+restoration. Adult nighttime entry after Zelda's Lullaby and the Keese
+door-opening puzzle also passed. A later debug session passed the inscription,
+Sun's Song lesson/acquisition, its outdoor cutscene and return to the tomb,
+and the song's ReDead-freezing effect. Testing stopped at the maintainer's
+request before completing the adult walking return to the Graveyard. Later
+room traversal used temporary health assistance. Original saves and settings
+were restored and hash-verified again. See the migration
+qualification for the precise coverage, validation and reporter-device limits.
+
+### Next engineering work
+
+1. Reproduce [issue #22](https://github.com/chrissotraidis/harkinianpad/issues/22)
+   on the affected physical iPhone, including the exact graveyard/tomb
+   transitions and Sun's Song sequence. Obtain the full Metal validation
+   sentence if it still fails. Upstream texture regressions are fixed, but
+   the issue's diagnosis and resolution are not confirmed.
+2. Requalify Files-picker import, touch, physical controllers, pause/lifecycle,
+   audio, save persistence and music-pack playback on 9.3.1. See the migration
+   report for the narrower Simulator coverage and shader-validation limitation.
+3. Refresh or retire old patch-export draft
+   [PR #28](https://github.com/chrissotraidis/harkinianpad/pull/28) separately.
+   Its source snapshots predate the current maintained pins; it is not the
+   production upgrade path. At the initial audit, #22 was the only open issue
+   and #28 the only open PR; no remote state was changed.
+
+The workflow now runs SDL dependency tests after population and requires their
+inputs, eliminating the previous cold-cache silent skips. Historical green CI
+on main does not qualify these unpublished component commits on other hosts.
+Future release work remains paused under AGENTS.md and also requires PadMint's
+current-main player checks before tagging and after publishing.
+
 ## Goal
 
 Deliver a reproducible native iOS/iPadOS port of Ship of Harkinian, with basic
@@ -24,7 +76,7 @@ completion.
 - `chrissotraidis/harkinianpad` is the only owned project repository and the
   app repository; modified dependency source lives in the dedicated forks
   selected by [sources.lock.json](../sources.lock.json).
-- Treat Shipwright, libultraship, ZAPDTR, and OTRExporter as pinned upstream
+- Treat Shipwright, libultraship, and Torch as pinned upstream
   source inputs. Maintain port changes as ordinary source commits in the
   dedicated component branches; preserve original upstream ancestry.
 - Keep `ENABLE_SCRIPTING` hard-disabled for iOS.

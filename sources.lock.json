@@ -4,38 +4,29 @@
     {
       "name": "Shipwright",
       "url": "https://github.com/chrissotraidis/Shipwright.git",
-      "commit": "087e43a31b26999fe2ce70a8cd9813408db0f2eb",
+      "commit": "0aa6942f02e72435ef41770be238722a4da64baf",
       "path": "sources/Shipwright",
       "patches": [],
       "upstream_url": "https://github.com/HarbourMasters/Shipwright.git",
-      "upstream_commit": "da4e6dc3321bda48a313b162261156580bc376f4"
+      "upstream_commit": "f0599f96f8d442f26d0fa1c5cedafddacd56633f"
     },
     {
       "name": "libultraship",
       "url": "https://github.com/chrissotraidis/libultraship.git",
-      "commit": "945cede5f7947fa8f4465685dd0062b3d6ab00ac",
+      "commit": "0ad687bb41d780f02246c1f04829e711a3c47e16",
       "path": "sources/Shipwright/libultraship",
       "patches": [],
       "upstream_url": "https://github.com/Kenix3/libultraship.git",
-      "upstream_commit": "2bfbde3a72c119f8073ad762ec6be131dff5df66"
+      "upstream_commit": "da6daf1a50a5e46d6641408d52227e31e85e46df"
     },
     {
-      "name": "ZAPDTR",
-      "url": "https://github.com/chrissotraidis/ZAPDTR.git",
-      "commit": "150d38a6569fa6c7a26cf1c7203e23f82ae19fec",
-      "path": "sources/Shipwright/ZAPDTR",
+      "name": "Torch",
+      "url": "https://github.com/HarbourMasters/Torch.git",
+      "commit": "2ab12fe9660aec04e02ee89fe81baed304a1a1d6",
+      "path": "sources/Shipwright/torch",
       "patches": [],
-      "upstream_url": "https://github.com/HarbourMasters/ZAPDTR.git",
-      "upstream_commit": "be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf"
-    },
-    {
-      "name": "OTRExporter",
-      "url": "https://github.com/harbourmasters/OTRExporter",
-      "commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d",
-      "path": "sources/Shipwright/OTRExporter",
-      "patches": [],
-      "upstream_url": "https://github.com/harbourmasters/OTRExporter",
-      "upstream_commit": "c5465ba0bbd02d80d6ba6beed15d049ab64f5d6d"
+      "upstream_url": "https://github.com/HarbourMasters/Torch.git",
+      "upstream_commit": "2ab12fe9660aec04e02ee89fe81baed304a1a1d6"
     }
   ]
 }

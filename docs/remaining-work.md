@@ -23,6 +23,13 @@ new portable resource archive matches the native packer byte for byte. App
 extraction in a fresh Simulator container matches native extraction. These
 checks do not close physical-device acceptance gates.
 
+The updated build is also installed locally on the maintainer's iPhone 14.
+Temporary child-Link tests passed daytime Kakariko ↔ Graveyard, daytime tomb
+entry/exit, nighttime tomb exit, Graveyard pause rendering and a Sun's Song
+day-to-night reload. Original saves/settings were hash-verified after
+restoration. See the migration qualification for the precise coverage and
+remaining adult-Link, full puzzle, validation and reporter-device limits.
+
 ### Next engineering work
 
 1. Reproduce [issue #22](https://github.com/chrissotraidis/harkinianpad/issues/22)

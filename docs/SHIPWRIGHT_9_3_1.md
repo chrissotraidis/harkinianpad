@@ -129,8 +129,40 @@ change is in 9.3.1 but absent from the previous 9.2.3 build. Follow-up
 of this check and was not applied. This is relevant if audio dropouts recur;
 it is not established as the cause of this user's resolved symptom.
 
-The exact graveyard/tomb crash reproduction remains unconfirmed. This local
-installation and user performance observation do not lift the release hold.
+This local installation and user performance observation do not lift the
+release hold. Subsequent targeted transition coverage is recorded below.
+
+## Physical iPhone transition check — 27 October 2026
+
+On the same iPhone 14 / iOS 27.0.1 installation, temporary child-Link debug
+states were used with Metal validation off, 30 FPS and 1x resolution. Inputs
+were delivered through iPhone Mirroring. The following completed without a
+crash and were corroborated by the scene initialization log:
+
+- Daytime Graveyard → Kakariko (`0x195`) → Graveyard (`0xe4`), using the
+  actual walking transitions. The Graveyard pause menu also rendered.
+- Royal Family's Tomb → daytime Graveyard (`0x50b`), twice. The second exit
+  followed Zelda's Lullaby, the grave-opening cutscene and a normal drop into
+  the tomb (`0x2d`). The initial tomb load used the debug scene selector.
+- Sun's Song in the Graveyard reloaded the scene at night without a crash.
+- Royal Family's Tomb → nighttime Graveyard (`0x50b`), using the actual exit
+  after a separate debug load configured for night.
+
+The nighttime walk-in attempt did not reach the entrance trigger; it is not
+counted as a pass. Adult Link, the full tomb puzzle/Sun's Song acquisition
+sequence, Metal-validation-enabled device transitions and the reporter's
+iPhone 16 Pro Max / iOS beta remain unqualified. These narrower successful
+checks do not establish that issue #22 is resolved on the affected device.
+
+QuickTime's preview was black while iPhone Mirroring controlled the locked
+phone, so no video recording is claimed. Local mirrored-screen screenshots,
+console logs and preservation evidence are under ignored
+`work/graveyard-test/`. The latest full pre-test backup is under ignored
+`work/graveyard-before/`. Both save files were unchanged by the test. After
+restoring the original configuration and relaunching normally with validation
+off, SHA-256 comparisons matched both saves, the game configuration, ImGui
+configuration, split data, preferences, ROM and game archive to the backup.
+No source or build change was required and nothing was published.
 
 Reproduction commands (run in the retained worktree):
 

@@ -112,7 +112,7 @@ Shipwright source version. The defaults are:
 | Field | Value |
 |---|---|
 | App version | `0.2.2` |
-| Build number | `7` |
+| Build number | `9` |
 | Bundle identifier | `com.chrissotraidis.harkinianpad` |
 
 For a later preview, increment the build number without changing the app

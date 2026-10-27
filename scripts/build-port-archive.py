@@ -12,8 +12,9 @@ import zipfile
 import zlib
 
 FORMATS = {"rgba32": 1, "ia4": 7, "ia8": 8, "ia16": 9}
-EXPECTED_INPUT = "500be226727746d9e01b15aa4433bd0c6f48a77feb76bcd20fd4ce96465e1ce2"
-EXPECTED_CONTENT = "5312468a530e3b9741ad22958f6f7275fe2abcaf9884e12d510a093bed7c3a5d"
+EXPECTED_INPUT = "af35d4394381ae7678cf9941c3d2454ccd19387ddc86dfdb211c6e37ad0fa97c"
+EXPECTED_ENTRIES = 1056
+EXPECTED_CONTENT = "45762d7a99ddd059e1a81a4273f38a42ed804e1da0e7438f0bda6cf23e438a1d"
 
 
 def content_hash(files):
@@ -135,7 +136,7 @@ def generate_entries(files):
         if name in entries:
             raise ValueError("Duplicate generated resource name")
         entries[name] = data
-    entries["portVersion"] = struct.pack(">BHHH", 1, 9, 2, 3)
+    entries["portVersion"] = struct.pack(">BHHH", 1, 9, 3, 1)
     if content_hash(entries) != EXPECTED_CONTENT:
         raise ValueError("Generated content differs from the native reference")
     return entries

@@ -46,9 +46,9 @@ def main():
     for _ in range(2):
         builder['build_archive'](directories['Shipwright'], directories['libultraship'], output)
     with zipfile.ZipFile(output) as archive:
-        if archive.testzip() is not None or len(archive.namelist()) != 1042:
+        if archive.testzip() is not None or len(archive.namelist()) != builder['EXPECTED_ENTRIES']:
             raise ValueError('Unexpected archive integrity or entry count')
-    print(json.dumps({'host': host, 'entries': 1042, 'content_sha256': builder['EXPECTED_CONTENT'],
+    print(json.dumps({'host': host, 'entries': builder['EXPECTED_ENTRIES'], 'content_sha256': builder['EXPECTED_CONTENT'],
                       'rerun_verified': True, 'gameplay_verified': False}))
 
 

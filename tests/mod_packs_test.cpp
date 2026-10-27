@@ -54,10 +54,22 @@ int main(int argc, char** argv) {
     assert(Read(good) == Read(root / "direct/good.o2r"));
     Reject([&] { ModPackImport::Import(good, root / "direct"); });
     assert(Read(good) == Read(root / "direct/good.o2r")); // never remove preexisting destination
+    const auto music = root / "track.ootrs";
+    Zip(music, {{"track.meta", "Synthetic track\n0x03\nbgm\n"}, {"track.seq", "synthetic sequence"}});
+    assert(ModPackImport::Import(music, root / "music") == 1);
+    assert(Read(music) == Read(root / "music/track.ootrs"));
+    std::ofstream(root / "bad.ootrs") << "not an archive";
+    Reject([&] { ModPackImport::Import(root / "bad.ootrs", root / "invalid-music"); });
+    assert(!fs::exists(root / "invalid-music"));
+    std::map<std::string, fs::path> musicCatalog{{"track.ootrs", music}};
+    assert(ModCatalog::Reconcile(musicCatalog, {}, false).enabled.empty());
     const auto bundle = root / "bundle.zip";
     Zip(bundle, {{"one/same.o2r", Read(good)}, {"two/same.o2r", Read(good)}, {"README.txt", "ignored"}});
     assert(ModPackImport::Import(bundle, root / "bundle") == 2);
     assert(!fs::exists(root / "bundle/README.txt"));
+    Zip(bundle, {{"music/track.ootrs", Read(music)}});
+    assert(ModPackImport::Import(bundle, root / "music-bundle") == 1);
+    assert(Read(root / "music-bundle/music/track.ootrs") == Read(music));
     Zip(bundle, {{"./one/good.o2r", Read(good)}, {"__MACOSX/one/._good.o2r", "AppleDouble metadata"},
                  {"one/._other.otr", "AppleDouble metadata"}});
     assert(ModPackImport::Import(bundle, root / "finder") == 1);

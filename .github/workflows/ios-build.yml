@@ -59,11 +59,16 @@ jobs:
       - name: Run controller lifecycle regression
         run: scripts/test-controller-reconnect.sh
 
-      - name: Test maintained dependency preservation
-        run: python3 -m unittest discover -s tests -p '*_test.py'
-
       - name: Reproduce unsigned arm64 iPhoneOS app
         run: scripts/build-ios.sh --device
+
+      # SDL fixtures need the dependency populated by configure, including on
+      # a cold cache. Fail if inputs are missing instead of silently skipping.
+      - name: Test maintained dependency preservation and SDL UIKit backports
+        run: |
+          test -f sources/Shipwright/libultraship/cmake/dependencies/git-patch.cmake
+          test -e build-ios-soh/_deps/sdl2-src/.git
+          python3 -m unittest discover -v -s tests -p '*_test.py'
 
       - name: Test pack import and selection boundaries
         run: scripts/test-mod-packs.sh

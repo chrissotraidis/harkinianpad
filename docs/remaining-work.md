@@ -6,6 +6,61 @@ The detailed investigation in that plan and [`findings/`](findings/) remains
 the technical baseline; this file records current state, tested evidence, and
 the next reproducible gate.
 
+## Maintenance snapshot — 27 October 2026
+
+- HarkinianPad `main` at `8409392` and release `v0.2.1` still select
+  Shipwright **9.2.3**, with upstream base `da4e6dc` and maintained commit
+  `087e43a`. The latest upstream release is
+  [Dewey Bravo 9.3.1](https://github.com/HarbourMasters/Shipwright/releases/tag/9.3.1),
+  commit `f0599f9`: 250 commits ahead of that upstream base. HarkinianPad's
+  application version and Shipwright's engine version are separate.
+- The latest main-branch [iOS CI run](https://github.com/chrissotraidis/harkinianpad/actions/runs/40112469130)
+  passed. A fresh checkout at the locked component revisions passes source
+  verification, all 30 Python tests with the pinned SDL source present,
+  repository safety, and controller-slot regression. The workflow now runs
+  dependency tests after the app build and requires their inputs: previously
+  the three SDL UIKit tests could silently skip before SDL was populated on a
+  cold cache. This audit did not rebuild the full app or perform device tests;
+  the native mod-pack test requires build-generated fixtures and was not run.
+
+### Next engineering work
+
+1. **Investigate the Metal crash with the upstream fixes in view.**
+   [Issue #22](https://github.com/chrissotraidis/harkinianpad/issues/22) is the
+   only open issue. The full Metal validation sentence and current-version
+   reproduction are still missing. Upstream libultraship
+   [#1143](https://github.com/Kenix3/libultraship/pull/1143) reshapes oversized
+   single-line RAW texture uploads before they reach Metal; follow-up
+   [#1172](https://github.com/Kenix3/libultraship/pull/1172) also handles
+   single-line loads below the GPU width limit. Both are absent from the
+   selected `945cede` source. They are concrete candidates to investigate,
+   not a confirmed diagnosis: the report also reproduces without texture mods.
+   Validate the reported graveyard transitions and ordinary textures before
+   claiming a fix.
+2. **Prepare a dedicated 9.3.1 migration.** Upstream now uses the `torch`
+   submodule in place of ZAPDTR/OTRExporter. Preserve and requalify Files ROM
+   import, ROM-free port-resource generation, mod loading, iOS startup, touch,
+   saves and controller behavior. A non-mutating `git merge-tree` trial found
+   conflicts in Shipwright's `.gitmodules`, `CMakeLists.txt`, `ZAPDTR`,
+   `libultraship`, `soh/CMakeLists.txt`, `soh/soh/Enhancements/mod_menu.cpp`,
+   `soh/soh/OTRGlobals.cpp`, `soh/soh/SohGui/Menu.cpp`,
+   `soh/soh/SohGui/SohGui.cpp`, and `soh/src/code/main.c`. Its selected
+   libultraship `da6daf1` is 32 commits beyond our upstream base and conflicts
+   with our maintained branch in `cmake/dependencies/common.cmake` and
+   `src/libultraship/libultra/os.cpp`. This needs source integration and
+   acceptance evidence, not just a lockfile version change.
+3. **Refresh or retire the old patch-export draft separately.**
+   [PR #28](https://github.com/chrissotraidis/harkinianpad/pull/28) is the only
+   open PR and remains a draft. Its verified source snapshots (`482cf3d`,
+   `7b08230`, `150d38a`) predate the current Shipwright/libultraship pins,
+   including the SDL iOS 27 work. Its historical CI success does not establish
+   parity with current main. It does not upgrade Shipwright or switch the
+   production build away from maintained forks.
+
+The physical controller, lifecycle/audio and release gates below remain open.
+Any future game release also needs PadMint's current-main player check before
+tagging and after publishing, in addition to the repository release gates.
+
 ## Goal
 
 Deliver a reproducible native iOS/iPadOS port of Ship of Harkinian, with basic

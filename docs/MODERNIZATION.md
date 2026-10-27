@@ -1,5 +1,8 @@
 # Source maintenance qualification
 
+This document records the historical 9.2.3 maintenance work. For current local
+9.3.1 integration and its Torch source graph, see [the upgrade qualification](SHIPWRIGHT_9_3_1.md).
+
 ## Scope and plan (19 September 2026)
 
 Preserve Preview 5, the app repository and the exact upstream version. Work on

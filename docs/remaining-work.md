@@ -8,58 +8,42 @@ the next reproducible gate.
 
 ## Maintenance snapshot — 27 October 2026
 
-- HarkinianPad `main` at `8409392` and release `v0.2.1` still select
-  Shipwright **9.2.3**, with upstream base `da4e6dc` and maintained commit
-  `087e43a`. The latest upstream release is
-  [Dewey Bravo 9.3.1](https://github.com/HarbourMasters/Shipwright/releases/tag/9.3.1),
-  commit `f0599f9`: 250 commits ahead of that upstream base. HarkinianPad's
-  application version and Shipwright's engine version are separate.
-- The latest main-branch [iOS CI run](https://github.com/chrissotraidis/harkinianpad/actions/runs/40112469130)
-  passed. A fresh checkout at the locked component revisions passes source
-  verification, all 30 Python tests with the pinned SDL source present,
-  repository safety, and controller-slot regression. The workflow now runs
-  dependency tests after the app build and requires their inputs: previously
-  the three SDL UIKit tests could silently skip before SDL was populated on a
-  cold cache. This audit did not rebuild the full app or perform device tests;
-  the native mod-pack test requires build-generated fixtures and was not run.
+Local branch `codex/shipwright-9.3.1` now integrates upstream **9.3.1**,
+its libultraship update, Torch extraction and upstream RAW texture fixes
+[#1143](https://github.com/Kenix3/libultraship/pull/1143) and
+[#1172](https://github.com/Kenix3/libultraship/pull/1172).
+See [the migration qualification](SHIPWRIGHT_9_3_1.md) for source identities,
+test results and remaining limits. All new commits and builds remain local.
+Public main `8409392` and release `v0.2.1` still select Shipwright **9.2.3**.
+Application version and engine version are separate.
+
+Both iPhoneOS and ARM64 Simulator builds pass. The full 435-test native suite
+passes with ASan/UBSan, all 30 Python regressions pass without skips, and the
+new portable resource archive matches the native packer byte for byte. App
+extraction in a fresh Simulator container matches native extraction. These
+checks do not close physical-device acceptance gates.
 
 ### Next engineering work
 
-1. **Investigate the Metal crash with the upstream fixes in view.**
-   [Issue #22](https://github.com/chrissotraidis/harkinianpad/issues/22) is the
-   only open issue. The full Metal validation sentence and current-version
-   reproduction are still missing. Upstream libultraship
-   [#1143](https://github.com/Kenix3/libultraship/pull/1143) reshapes oversized
-   single-line RAW texture uploads before they reach Metal; follow-up
-   [#1172](https://github.com/Kenix3/libultraship/pull/1172) also handles
-   single-line loads below the GPU width limit. Both are absent from the
-   selected `945cede` source. They are concrete candidates to investigate,
-   not a confirmed diagnosis: the report also reproduces without texture mods.
-   Validate the reported graveyard transitions and ordinary textures before
-   claiming a fix.
-2. **Prepare a dedicated 9.3.1 migration.** Upstream now uses the `torch`
-   submodule in place of ZAPDTR/OTRExporter. Preserve and requalify Files ROM
-   import, ROM-free port-resource generation, mod loading, iOS startup, touch,
-   saves and controller behavior. A non-mutating `git merge-tree` trial found
-   conflicts in Shipwright's `.gitmodules`, `CMakeLists.txt`, `ZAPDTR`,
-   `libultraship`, `soh/CMakeLists.txt`, `soh/soh/Enhancements/mod_menu.cpp`,
-   `soh/soh/OTRGlobals.cpp`, `soh/soh/SohGui/Menu.cpp`,
-   `soh/soh/SohGui/SohGui.cpp`, and `soh/src/code/main.c`. Its selected
-   libultraship `da6daf1` is 32 commits beyond our upstream base and conflicts
-   with our maintained branch in `cmake/dependencies/common.cmake` and
-   `src/libultraship/libultra/os.cpp`. This needs source integration and
-   acceptance evidence, not just a lockfile version change.
-3. **Refresh or retire the old patch-export draft separately.**
-   [PR #28](https://github.com/chrissotraidis/harkinianpad/pull/28) is the only
-   open PR and remains a draft. Its verified source snapshots (`482cf3d`,
-   `7b08230`, `150d38a`) predate the current Shipwright/libultraship pins,
-   including the SDL iOS 27 work. Its historical CI success does not establish
-   parity with current main. It does not upgrade Shipwright or switch the
-   production build away from maintained forks.
+1. Reproduce [issue #22](https://github.com/chrissotraidis/harkinianpad/issues/22)
+   on the affected physical iPhone, including the exact graveyard/tomb
+   transitions and Sun's Song sequence. Obtain the full Metal validation
+   sentence if it still fails. Upstream texture regressions are fixed, but
+   the issue's diagnosis and resolution are not confirmed.
+2. Requalify Files-picker import, touch, physical controllers, pause/lifecycle,
+   audio, save persistence and music-pack playback on 9.3.1. See the migration
+   report for the narrower Simulator coverage and shader-validation limitation.
+3. Refresh or retire old patch-export draft
+   [PR #28](https://github.com/chrissotraidis/harkinianpad/pull/28) separately.
+   Its source snapshots predate the current maintained pins; it is not the
+   production upgrade path. At the initial audit, #22 was the only open issue
+   and #28 the only open PR; no remote state was changed.
 
-The physical controller, lifecycle/audio and release gates below remain open.
-Any future game release also needs PadMint's current-main player check before
-tagging and after publishing, in addition to the repository release gates.
+The workflow now runs SDL dependency tests after population and requires their
+inputs, eliminating the previous cold-cache silent skips. Historical green CI
+on main does not qualify these unpublished component commits on other hosts.
+Future release work remains paused under AGENTS.md and also requires PadMint's
+current-main player checks before tagging and after publishing.
 
 ## Goal
 
@@ -79,7 +63,7 @@ completion.
 - `chrissotraidis/harkinianpad` is the only owned project repository and the
   app repository; modified dependency source lives in the dedicated forks
   selected by [sources.lock.json](../sources.lock.json).
-- Treat Shipwright, libultraship, ZAPDTR, and OTRExporter as pinned upstream
+- Treat Shipwright, libultraship, and Torch as pinned upstream
   source inputs. Maintain port changes as ordinary source commits in the
   dedicated component branches; preserve original upstream ancestry.
 - Keep `ENABLE_SCRIPTING` hard-disabled for iOS.

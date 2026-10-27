@@ -8,13 +8,13 @@ the next reproducible gate.
 
 ## Maintenance snapshot — 27 October 2026
 
-Local branch `codex/shipwright-9.3.1` now integrates upstream **9.3.1**,
+PR #39 merged upstream **9.3.1** into main, including
 its libultraship update, Torch extraction and upstream RAW texture fixes
 [#1143](https://github.com/Kenix3/libultraship/pull/1143) and
 [#1172](https://github.com/Kenix3/libultraship/pull/1172).
 See [the migration qualification](SHIPWRIGHT_9_3_1.md) for source identities,
-test results and remaining limits. All new commits and builds remain local.
-Public main `8409392` and release `v0.2.1` still select Shipwright **9.2.3**.
+test results and remaining limits. HarkinianPad 0.2.2 build 9 prepares a
+recipe-only PadMint release of the merged update. Personal app builds stay private.
 Application version and engine version are separate.
 
 Both iPhoneOS and ARM64 Simulator builds pass. The full 435-test native suite
@@ -55,8 +55,9 @@ qualification for the precise coverage, validation and reporter-device limits.
 The workflow now runs SDL dependency tests after population and requires their
 inputs, eliminating the previous cold-cache silent skips. Historical green CI
 on main does not qualify these unpublished component commits on other hosts.
-Future release work remains paused under AGENTS.md and also requires PadMint's
-current-main player checks before tagging and after publishing.
+The maintainer approved recipe-only releases on 27 October 2026. These require
+PadMint's current-main player checks before tagging and after publishing, plus
+content gates on every public asset. Prebuilt game binaries remain prohibited.
 
 ## Goal
 

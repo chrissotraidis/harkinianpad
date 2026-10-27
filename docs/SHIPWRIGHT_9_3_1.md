@@ -4,8 +4,9 @@ The `codex/shipwright-9.3.1` branch integrates Ship of Harkinian 9.3.1
 (`f0599f96f8d442f26d0fa1c5cedafddacd56633f`) and its libultraship base
 `da6daf1a50a5e46d6641408d52227e31e85e46df`, preserving the maintained iOS
 port. The exact resulting commits are in [sources.lock.json](../sources.lock.json).
-This work is unreleased. App identity remains 0.2.1 build 8 for this
-development proof; it must receive a new build identity before any future release.
+The integration merged in PR #39. HarkinianPad 0.2.2 build 9 prepares its
+recipe-only PadMint release. The device evidence below used 0.2.1 build 8;
+the release identity change does not establish additional gameplay coverage.
 
 ## Integration
 

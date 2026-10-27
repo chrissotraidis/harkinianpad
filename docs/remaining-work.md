@@ -27,8 +27,12 @@ The updated build is also installed locally on the maintainer's iPhone 14.
 Temporary child-Link tests passed daytime Kakariko ↔ Graveyard, daytime tomb
 entry/exit, nighttime tomb exit, Graveyard pause rendering and a Sun's Song
 day-to-night reload. Original saves/settings were hash-verified after
-restoration. See the migration qualification for the precise coverage and
-remaining adult-Link, full puzzle, validation and reporter-device limits.
+restoration. Adult nighttime entry after Zelda's Lullaby and the Keese
+door-opening puzzle also passed. The inscription, Sun's Song acquisition
+and adult return trip remain unfinished after a Mirroring access blocker;
+the later room traversal used temporary health assistance. Original saves
+and settings were restored and hash-verified again. See the migration
+qualification for the precise coverage, validation and reporter-device limits.
 
 ### Next engineering work
 

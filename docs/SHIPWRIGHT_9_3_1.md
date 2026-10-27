@@ -164,6 +164,37 @@ off, SHA-256 comparisons matched both saves, the game configuration, ImGui
 configuration, split data, preferences, ROM and game archive to the backup.
 No source or build change was required and nothing was published.
 
+### Adult/night follow-up — 27 October 2026
+
+The same installed build was tested with a temporary adult-Link nighttime
+debug state and Metal validation off. Zelda's Lullaby opened the royal grave,
+and walking into the opening loaded Royal Family's Tomb (`0x41`, entrance
+`0x2d`). All four Keese were defeated with the bow; the room-clear flag was
+logged and the barred door opened. The ReDead/poison room and the inner room
+loaded without an observed crash. The inscription interaction, Sun's Song
+lesson/acquisition and return trip are **not yet qualified**.
+
+Link died during remote navigation through the poison room, then continued
+from the tomb entrance. Temporary infinite health was enabled after that;
+infinite Nayru's Love was briefly tried and disabled. These assisted checks
+do not qualify ordinary combat/difficulty. Sun's Song was cleared only in
+the temporary debug state to prepare the acquisition test. No user save was
+edited. Concurrent phone testing interrupted Mirroring and switched apps;
+HarkinianPad's original process remained alive. After that activity was
+paused, Mirroring could not reconnect because the phone was unlocked, so
+the remaining gameplay checks stopped at that access blocker.
+
+Evidence and the latest pre-test Documents/Preferences backup are retained
+locally under ignored `work/tomb-followup/`. The attempted full-container
+copy there was incomplete because a protected SplashBoard file was denied;
+the separately completed `baseline/` copies and their manifest are the
+restore authority. Both save files remained byte-identical and no new
+Documents files appeared. The original game configuration was restored,
+the app was relaunched with validation off, and all nine non-log baseline
+files (saves, settings/preferences, split data, ROM/archive and mod marker)
+matched SHA-256 afterward. Logs were retained as test evidence. Nothing was
+published, and the existing local worktree remains in use.
+
 Reproduction commands (run in the retained worktree):
 
 ```sh

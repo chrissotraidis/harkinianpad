@@ -28,10 +28,12 @@ Temporary child-Link tests passed daytime Kakariko ↔ Graveyard, daytime tomb
 entry/exit, nighttime tomb exit, Graveyard pause rendering and a Sun's Song
 day-to-night reload. Original saves/settings were hash-verified after
 restoration. Adult nighttime entry after Zelda's Lullaby and the Keese
-door-opening puzzle also passed. The inscription, Sun's Song acquisition
-and adult return trip remain unfinished after a Mirroring access blocker;
-the later room traversal used temporary health assistance. Original saves
-and settings were restored and hash-verified again. See the migration
+door-opening puzzle also passed. A later debug session passed the inscription,
+Sun's Song lesson/acquisition, its outdoor cutscene and return to the tomb,
+and the song's ReDead-freezing effect. Testing stopped at the maintainer's
+request before completing the adult walking return to the Graveyard. Later
+room traversal used temporary health assistance. Original saves and settings
+were restored and hash-verified again. See the migration
 qualification for the precise coverage, validation and reporter-device limits.
 
 ### Next engineering work

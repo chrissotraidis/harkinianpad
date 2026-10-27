@@ -4,7 +4,7 @@ The `codex/shipwright-9.3.1` branch integrates Ship of Harkinian 9.3.1
 (`f0599f96f8d442f26d0fa1c5cedafddacd56633f`) and its libultraship base
 `da6daf1a50a5e46d6641408d52227e31e85e46df`, preserving the maintained iOS
 port. The exact resulting commits are in [sources.lock.json](../sources.lock.json).
-This work is local and unreleased. App identity remains 0.2.1 build 8 for this
+This work is unreleased. App identity remains 0.2.1 build 8 for this
 development proof; it must receive a new build identity before any future release.
 
 ## Integration
@@ -91,10 +91,10 @@ performance, audible output or gameplay acceptance.
 - Draft [PR #28](https://github.com/chrissotraidis/harkinianpad/pull/28) still
   contains old patch-export snapshots and remains separate.
 
-The wrapper and both modified component branches contain local commits that
-have not been pushed. A fresh remote clone cannot fetch these pins yet. Keep
-the task worktree and its component Git repositories; do not deinitialize or
-remove it. Build logs, private test archives/screenshots and local source
+The maintainer subsequently authorized pushing the source changes and merging
+the wrapper into `main`; the component pins are now backed by branches in the
+maintainer's forks. This does not authorize a public release. Retain the task
+worktree for its local evidence. Build logs, private test archives/screenshots and local source
 backup bundles are under ignored `work/`; build outputs and the unsigned proof
 package remain ignored. The primary checkout's pre-existing edits are intact.
 During the initial integration, no GitHub state, release, physical-device
@@ -194,6 +194,27 @@ the app was relaunched with validation off, and all nine non-log baseline
 files (saves, settings/preferences, split data, ROM/archive and mod marker)
 matched SHA-256 afterward. Logs were retained as test evidence. Nothing was
 published, and the existing local worktree remains in use.
+
+### Song acquisition follow-up and end of testing — 27 October 2026
+
+After Mirroring reconnected, a temporary adult/night debug spawn at the
+inscription (`0x574`, room 2) resumed the outstanding song checks. Sun's Song
+was cleared in the debug inventory, then the inscription was read normally.
+The teaching cutscene, six-note ocarina input, "You've learned the Sun's Song!"
+confirmation, outdoor Graveyard cutscene (`0xe4`) and return to the tomb
+(`0x574`) all completed without an observed crash. Playing the learned song
+in the ReDead room visibly froze the enemies. Temporary infinite health was
+enabled for the return traversal after the lesson. The maintainer then asked
+to stop testing and merge; the walking return to the Graveyard was not
+completed. Coverage is split across debug sessions, not an uninterrupted
+ordinary-save playthrough. The reporter-device and validation limits remain.
+
+The app was stopped immediately. Both save files and all other non-log files
+except the temporary game configuration matched the fresh pre-session backup;
+no new Documents files appeared. The original configuration was restored and
+its SHA-256 verified on the device. Evidence and backups remain local under
+ignored `work/tomb-finish/`. No further gameplay or test suites were run after
+the stop request, and no release artifacts were published.
 
 Reproduction commands (run in the retained worktree):
 

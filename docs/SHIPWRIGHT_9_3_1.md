@@ -97,7 +97,40 @@ the task worktree and its component Git repositories; do not deinitialize or
 remove it. Build logs, private test archives/screenshots and local source
 backup bundles are under ignored `work/`; build outputs and the unsigned proof
 package remain ignored. The primary checkout's pre-existing edits are intact.
-No GitHub state, release, device installation or release approval was changed.
+During the initial integration, no GitHub state, release, physical-device
+installation or release approval was changed. The subsequent local device
+test is recorded below.
+
+## Subsequent iPhone installation and performance check
+
+The same build was signed locally and installed over 0.2.0 build 7 on the
+maintainer's iPhone 14 running iOS 27.0.1. A full app-data backup was retained.
+All ten original container files matched byte for byte after installation;
+both save files and settings also matched after launch. The title screen and
+9.3.1 runtime version were verified. No uninstall or public distribution occurred.
+
+The first crash-diagnostic launch explicitly enabled `MTL_DEBUG_LAYER=1`.
+After the user reported increased stuttering, the same binary was relaunched
+with `MTL_DEBUG_LAYER=0`, preserving the 30 FPS / 1x resolution settings.
+The user then reported that gameplay appeared back to normal. This strongly
+implicates validation overhead in that session; it is not a code regression
+diagnosis or a controlled benchmark. Validation was a launch environment
+setting, not a default added to the app. Normal launches do not enable it.
+
+A roughly 15-second Metal trace without validation showed nominal thermal
+state and 463 displayed frames averaging 33.35 ms. Forty display intervals
+exceeded 45 ms, with a maximum of 66.77 ms; average FPS alone does not establish
+perfect pacing. The user nevertheless reported normal perceived performance.
+
+Separately, upstream [#7284](https://github.com/HarbourMasters/Shipwright/pull/7284)
+explicitly reintroduced audio stutter to resolve audio-engine races. That
+change is in 9.3.1 but absent from the previous 9.2.3 build. Follow-up
+[#7289](https://github.com/HarbourMasters/Shipwright/pull/7289) remains open as
+of this check and was not applied. This is relevant if audio dropouts recur;
+it is not established as the cause of this user's resolved symptom.
+
+The exact graveyard/tomb crash reproduction remains unconfirmed. This local
+installation and user performance observation do not lift the release hold.
 
 Reproduction commands (run in the retained worktree):
 

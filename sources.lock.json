@@ -4,7 +4,7 @@
     {
       "name": "Shipwright",
       "url": "https://github.com/chrissotraidis/Shipwright.git",
-      "commit": "0aa6942f02e72435ef41770be238722a4da64baf",
+      "commit": "dbf43d7d691cad2bcee15d8d974705c225abb13e",
       "path": "sources/Shipwright",
       "patches": [],
       "upstream_url": "https://github.com/HarbourMasters/Shipwright.git",

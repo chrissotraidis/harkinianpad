@@ -6,6 +6,19 @@ The detailed investigation in that plan and [`findings/`](findings/) remains
 the technical baseline; this file records current state, tested evidence, and
 the next reproducible gate.
 
+## Do soon — noted 2 November 2026
+
+- [ ] **Release v0.2.3 with the blue ocarina icon.** The icon change from
+  [#41](https://github.com/chrissotraidis/harkinianpad/pull/41) is merged into
+  main, but the latest release, v0.2.2 (27 October), still has the ship's-wheel
+  icon. PadMint builds from the latest release, so new builds keep the old icon
+  until v0.2.3 is published. Follow the [release checklist](RELEASE_CHECKLIST.md):
+  recipe-only assets, the release gate and PadMint audit, and PadMint's
+  `scripts/player-check.sh` before tagging and after publishing. Then rebuild,
+  reinstall and confirm the icon on a device.
+- [ ] PadMint swaps its HarkinianPad card art to match (tracked in
+  [PadMint's roadmap](https://github.com/chrissotraidis/padmint/blob/main/docs/ROADMAP.md#do-soon-noted-2-november-2026)).
+
 ## Maintenance snapshot — 27 October 2026
 
 PR #39 merged upstream **9.3.1** into main, including

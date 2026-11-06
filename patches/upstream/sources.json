@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "note": "HarkinianPad's changes as patches against the original upstream projects. Applying them reproduces the fork commits in sources.lock.json exactly (apart from submodule URLs) without fetching the forks.",
+  "components": [
+    {
+      "name": "Shipwright",
+      "path": ".",
+      "upstream_url": "https://github.com/HarbourMasters/Shipwright.git",
+      "upstream_commit": "da4e6dc3321bda48a313b162261156580bc376f4",
+      "patch": "patches/upstream/Shipwright.patch",
+      "patch_sha256": "fada03b50f716b38bd4aa9ce4d2909feb819dc059d0d50b8bdc371c7fde35962",
+      "patched_tree": "4fbef54ff93fcd31ea82d7564db5685d0f8c333d",
+      "replaces_fork_commit": "482cf3da0b3dfb2ab5b062798e651c54b51b176a"
+    },
+    {
+      "name": "libultraship",
+      "path": "libultraship",
+      "upstream_url": "https://github.com/Kenix3/libultraship.git",
+      "upstream_commit": "2bfbde3a72c119f8073ad762ec6be131dff5df66",
+      "patch": "patches/upstream/libultraship.patch",
+      "patch_sha256": "b8ea8ff845efaec613193c57c8478a33951b02c36dd9f0d1407401a837fac4e6",
+      "patched_tree": "fcf206db7c189d15cab5445116e460d2270a013a",
+      "replaces_fork_commit": "7b0823020c9772c4d87291e221dd54b302b78bf6"
+    },
+    {
+      "name": "ZAPDTR",
+      "path": "ZAPDTR",
+      "upstream_url": "https://github.com/HarbourMasters/ZAPDTR.git",
+      "upstream_commit": "be1c68a79c2d9a463f1b176b5cc32cf9771bfeaf",
+      "patch": "patches/upstream/ZAPDTR.patch",
+      "patch_sha256": "e87ba7cafc6c0d2bbad7237cea0ce1a1b7926697ae846fe78200d08dcdc6f069",
+      "patched_tree": "954a8f8cc84a67a3fe9f53e38c04dfc4c9b8d8d2",
+      "replaces_fork_commit": "150d38a6569fa6c7a26cf1c7203e23f82ae19fec"
+    }
+  ]
+}

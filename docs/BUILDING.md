@@ -225,6 +225,11 @@ Start is assigned to player 1, and restores it when that controller leaves.
 `•••` stays available. While the controls are hidden, **Settings > Controls >
 Show Touch Controls** brings them back at once. It also clears a manual hide
 and turns auto-hide off until you turn it on again.
+Simulator builds do not auto-hide: the Simulator always presents its own
+wireless MFi controller named "Gamepad", even with nothing attached to the Mac,
+so auto-hide can only be checked on a physical iPhone or iPad. The app logs
+`[HarkinianPad] player 1 gameplay controller connected` (or `not connected`)
+whenever that state changes.
 
 The default controller keeps the proven SDL input path and uses native A, B,
 and C HUD artwork over transparent UIKit touch targets. Choose **Customize

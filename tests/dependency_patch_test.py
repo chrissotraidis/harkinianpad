@@ -53,14 +53,14 @@ class DependencyPatchTest(unittest.TestCase):
 
 
 @unittest.skipUnless((SDL_SOURCE / '.git').exists(), 'Run after SDL2 source population')
-class SDLOrientationPatchTest(unittest.TestCase):
+class SDLScenePatchTest(unittest.TestCase):
     """Use the pinned SDL preimages, never modify the real dependency cache."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.tree = Path(self.tmp.name)
-        patches = [PATCHES / 'sdl2-uikit-scenes.patch', PATCHES / 'sdl2-uikit-orientation.patch']
+        patches = [PATCHES / 'sdl2-uikit-scenes.patch', PATCHES / 'sdl2-uikit-window-ownership.patch']
         names = set()
         for patch in patches:
             for line in patch.read_text().splitlines():
@@ -75,7 +75,7 @@ class SDLOrientationPatchTest(unittest.TestCase):
 
     def apply(self, name='sdl2-uikit-scenes.patch'):
         return subprocess.run(['cmake', f'-Dpatch_file={PATCHES / name}',
-                              f'-Dfallback_patch_file={PATCHES / "sdl2-uikit-orientation.patch"}',
+                              f'-Dfallback_patch_file={PATCHES / "sdl2-uikit-window-ownership.patch"}',
                               '-P', str(HELPER)],
                               cwd=self.tree, capture_output=True)
 
@@ -85,16 +85,19 @@ class SDLOrientationPatchTest(unittest.TestCase):
 
     def test_existing_scene_checkout_upgrades_and_reruns(self):
         self.assertEqual(self.apply().returncode, 0)
-        # Remove only the follow-up from this isolated fixture to recreate the
-        # old scene-only source, without needing historical commits in CI.
+        # Remove only the follow-up from this isolated fixture to recreate a
+        # cache holding the previous scene/orientation patch, without needing
+        # historical commits in CI.
         subprocess.check_call(['git', 'apply', '--reverse',
-            str(PATCHES / 'sdl2-uikit-orientation.patch')], cwd=self.tree)
+            str(PATCHES / 'sdl2-uikit-window-ownership.patch')], cwd=self.tree)
+        self.assertNotIn(b'UIKit_AdoptOwningScene', self.snapshot()['src/video/uikit/SDL_uikitwindow.m'])
         self.assertEqual(self.apply().returncode, 0)
         first = self.snapshot()
         self.assertEqual(self.apply().returncode, 0)
         self.assertEqual(self.snapshot(), first)
         self.assertIn(b'windowScene.effectiveGeometry.interfaceOrientation',
                       first['src/video/uikit/SDL_uikitvideo.m'])
+        self.assertIn(b'void UIKit_AdoptOwningScene', first['src/video/uikit/SDL_uikitwindow.m'])
 
     def test_incompatible_orientation_edits_are_preserved(self):
         self.assertEqual(self.apply().returncode, 0)

@@ -18,3 +18,12 @@ trap 'rm -rf "$test_dir"' EXIT
     -o "$test_dir/controller_slot_assignments_test"
 
 "$test_dir/controller_slot_assignments_test"
+
+"${CXX:-c++}" -std=c++20 -Wall -Wextra -Werror \
+    -I"$ROOT/sources/Shipwright/libultraship/include" \
+    -I"$ROOT/sources/Shipwright/soh/ios" \
+    "$ROOT/tests/touch_visibility_test.cpp" \
+    "$SLOTS_SOURCE" \
+    -o "$test_dir/touch_visibility_test"
+
+"$test_dir/touch_visibility_test"

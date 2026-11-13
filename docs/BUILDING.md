@@ -91,7 +91,10 @@ scripts/test-controller-reconnect.sh
 It deterministically covers missed removal with held input, neutral input after
 stale ownership is released, a sole return to player 1, an additional player 2,
 two-controller preservation, foreground reconciliation, and deliberate device
-disable/restore. The practical libultraship suite must use Debug because two
+disable/restore. The same script runs the touch-visibility regression: a
+complete controller assigned to player 1 hides touch, while a player 2 or
+menu-only controller does not, and Show Touch Controls restores touch with the
+controller connected. The practical libultraship suite must use Debug because two
 event-metadata tests intentionally depend on `_DEBUG`. This optional desktop
 suite needs the desktop libraries that the player iOS build no longer uses:
 
@@ -216,6 +219,13 @@ with **•••**; the gameplay overlay disappears while the menu is visible an
 returns when the menu closes. Turn it off or back on entirely under
 **Settings > Controls > Touch Controls**.
 
+**Auto-hide Touch Controls with Controller** (on unless you saved a different
+choice) hides the gameplay overlay while a controller with a stick, A/B/X/Y and
+Start is assigned to player 1, and restores it when that controller leaves.
+`•••` stays available. While the controls are hidden, **Settings > Controls >
+Show Touch Controls** brings them back at once. It also clears a manual hide
+and turns auto-hide off until you turn it on again.
+
 The default controller keeps the proven SDL input path and uses native A, B,
 and C HUD artwork over transparent UIKit touch targets. Choose **Customize
 Touch Layout** to move, resize, or hide individual controls; phone and tablet
@@ -271,7 +281,8 @@ Confirm that:
    Confirm the D-pad and C buttons emit their mapped inputs in gameplay or the
    input viewer.
 2. Disabling **Touch Controls** removes the overlay immediately; enabling it
-   restores the overlay without restarting.
+   restores the overlay without restarting. With it disabled, **Show Touch
+   Controls** appears and restores working controls in one step.
 3. Enable **Touch Control Transparency**, confirm the opacity slider appears,
    and test 25%, 50%, and 100%. The UIKit controls and gameplay-native A/B/C
    artwork should change together while their touch targets remain unchanged.
@@ -297,6 +308,9 @@ Confirm that:
    game remains active and after a background/foreground cycle. Held buttons,
    triggers, and sticks must become neutral while disconnected, and the touch
    overlay should return or hide according to the connected-controller state.
+   With the controller connected, **Show Touch Controls** must restore working
+   touch input without changing the controller's player slot, and turning
+   auto-hide back on must hide touch again at once.
 9. Test wired disconnect/reconnect separately when the controller supports it.
 10. Exercise the full mapping and confirm a sole return keeps player 1. With
    two controllers, disconnect or sleep either one and confirm the other keeps

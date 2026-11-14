@@ -8,14 +8,13 @@ the next reproducible gate.
 
 ## Do soon — noted 2 November 2026
 
-- [ ] **Release v0.2.3 with the blue ocarina icon.** The icon change from
-  [#41](https://github.com/chrissotraidis/harkinianpad/pull/41) is merged into
-  main, but the latest release, v0.2.2 (27 October), still has the ship's-wheel
-  icon. PadMint builds from the latest release, so new builds keep the old icon
-  until v0.2.3 is published. Follow the [release checklist](RELEASE_CHECKLIST.md):
-  recipe-only assets, the release gate and PadMint audit, and PadMint's
-  `scripts/player-check.sh` before tagging and after publishing. Then rebuild,
-  reinstall and confirm the icon on a device.
+- [ ] **Publish v0.2.3 (prepared 14 November 2026).** Version 0.2.3 build 10
+  carries the blue ocarina icon (#41), the SDL2 external-display window fix
+  (#43) and Show Touch Controls with Auto-hide Touch Controls with Controller
+  (#42). It is prepared as a draft release; publish it after the maintainer
+  checks it on a TV and with a controller. Then run PadMint's
+  `scripts/player-check.sh` without a checkout, rebuild, reinstall and
+  confirm the icon on a device.
 - [ ] PadMint swaps its HarkinianPad card art to match (tracked in
   [PadMint's roadmap](https://github.com/chrissotraidis/padmint/blob/main/docs/ROADMAP.md#do-soon-noted-2-november-2026)).
 

@@ -252,9 +252,9 @@ To create the unsigned, re-signable developer-preview package, run:
 scripts/package-ios.sh
 ```
 
-The current defaults in `version.json` are HarkinianPad `0.2.2`, build `9`,
+The current defaults in `version.json` are HarkinianPad `0.2.3`, build `10`,
 with bundle identifier `com.chrissotraidis.harkinianpad`. The package is named
-`HarkinianPad-0.2.2-preview.9-unsigned.ipa`. It contains no maintainer
+`HarkinianPad-0.2.3-preview.10-unsigned.ipa`. It contains no maintainer
 certificate or provisioning profile; a sideload tool such as AltStore Classic
 must re-sign it for the installer's device.
 
@@ -401,6 +401,6 @@ use it, you need your own legally obtained copy of the game, and you build it
 yourself on your own machine. Please don't share game files or builds made from
 them.
 
-HarkinianPad 0.2.2 integrates Ship of Harkinian 9.3.1. Releases contain only
+HarkinianPad 0.2.3 integrates Ship of Harkinian 9.3.1. Releases contain only
 a PadMint recipe and checksums; PadMint builds your personal app. See the
 [upgrade qualification and remaining device checks](docs/SHIPWRIGHT_9_3_1.md).

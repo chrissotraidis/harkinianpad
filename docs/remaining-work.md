@@ -8,11 +8,11 @@ the next reproducible gate.
 
 ## Do soon — noted 2 November 2026
 
-- [ ] **Publish v0.2.3 (prepared 14 November 2026).** Version 0.2.3 build 10
+- [ ] **Publish v0.2.4 (prepared 19 November 2026).** Version 0.2.4 build 11
   carries the blue ocarina icon (#41), the SDL2 external-display window fix
-  (#43) and Show Touch Controls with Auto-hide Touch Controls with Controller
-  (#42). It is prepared as a draft release; publish it after the maintainer
-  checks it on a TV and with a controller. Then run PadMint's
+  (#43), the iPad TV orientation fix and Show Touch Controls with Auto-hide
+  Touch Controls with Controller (#42). Publish it after the maintainer checks
+  it on a TV and with a controller. Then run PadMint's
   `scripts/player-check.sh` without a checkout, rebuild, reinstall and
   confirm the icon on a device.
 - [ ] PadMint swaps its HarkinianPad card art to match (tracked in
